@@ -6,7 +6,7 @@
 [![FastAPI](https://img.shields.io/badge/fastapi-0.115+-green.svg)](https://fastapi.tiangolo.com/)
 [![Tests](https://img.shields.io/badge/tests-107%2F107%20passing-brightgreen.svg)](https://github.com/)
 
-An AI data-analysis agent that executes generated Python code inside disposable, cryptographically verified Docker containers on a dedicated Vultr VM, powered by Vultr Serverless Inference.
+An AI data-analysis agent that executes generated Python code inside disposable, isolated Docker containers on a dedicated Vultr VM, backed by tamper-evident SHA-256 receipts and powered by Vultr Serverless Inference.
 
 > **Hackathon Track:** Vultr Agent Rush — Challenge 1: Blast Radius Zero  
 > **Source of Truth:** [`docs/PRD.md`](docs/PRD.md) (v3.0) & [`AGENTS.md`](AGENTS.md)  
@@ -37,7 +37,7 @@ Most AI code-execution agents execute untrusted LLM-generated code in persistent
 5. **Privilege Escalation Prevention:** `--security-opt no-new-privileges` prevents `setuid` binaries from escalating privileges.
 6. **Kernel Resource Limits:** Strict runtime cgroups limits: 512 MB RAM, 64 PIDs, 1.0 CPU quota, 60s hard timeout.
 7. **Bounded Execution Storage:** `/out` is mounted as a 20 MB bounded tmpfs (`rw,noexec,nosuid`). Storage limit is kernel-enforced during execution. Artifacts are safely extracted via controller tar streams before container destruction.
-8. **Cryptographic Containment Card:** Every execution receipt inspects real Docker daemon metadata and reports cryptographic SHA-256 hashes for all inputs, generated code, artifacts, and output receipts.
+8. **Evidence-Backed Containment Card & Tamper-Evident Receipts:** Every execution receipt inspects real Docker daemon metadata and computes canonical SHA-256 digests over inputs, generated code, execution outcomes, and output artifacts to detect post-run tampering.
 
 ---
 
@@ -82,7 +82,7 @@ User Browser / Dashboard
 ├── Read-only bind mount: /app/code.py
 └── Bounded tmpfs: /tmp (64MB) and /out (20MB)
       │
-      ▼  (Host tar-stream extraction & cryptographic verification)
+      ▼  (Host tar-stream extraction & tamper-evident verification)
 Captured Evidence & Containment Card
 └── SHA-256 Receipts, Charts, Summary Explanations
 ```
@@ -125,7 +125,7 @@ Captured Evidence & Containment Card
 
 ## Test Suite & Verification
 
-AURON's test suite contains **107 comprehensive tests** spanning API contracts, CSV defenses, AST validation, cryptographic receipt verification, container containment, resource limits, and Red Team probes:
+AURON's test suite contains **107 comprehensive tests** spanning API contracts, CSV defenses, AST validation, tamper-evident receipt verification, container containment, resource limits, and Red Team probes:
 
 ```bash
 /home/auron/venv/bin/pytest tests/ -v

@@ -22,6 +22,8 @@ def setup_test_db(tmp_path):
     test_db = tmp_path / "test_redteam.db"
     init_db(test_db)
     with patch.object(settings, "db_path", test_db), \
+         patch.object(settings, "red_team_enabled", True), \
+         patch.object(settings, "red_team_token", "test-fixture-token"), \
          patch("backend.main.reap_orphaned_containers", return_value=[]):
         yield
 

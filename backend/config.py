@@ -44,8 +44,8 @@ class Settings(BaseSettings):
     max_question_chars: int = Field(default=2000, alias="MAX_QUESTION_CHARS")
 
     # Red Team Arena settings (PRD §11 & §14)
-    red_team_enabled: bool = Field(default=True, alias="RED_TEAM_ENABLED")
-    red_team_token: str = Field(default="auron-redteam-demo-2026", alias="RED_TEAM_TOKEN")
+    red_team_enabled: bool = Field(default=False, alias="RED_TEAM_ENABLED")
+    red_team_token: str = Field(default="", alias="RED_TEAM_TOKEN")
 
     # File and directory paths
     data_dir: Path = Field(default=Path("data"))
@@ -68,6 +68,8 @@ class Settings(BaseSettings):
         d = self.model_dump()
         if d.get("vultr_inference_api_key"):
             d["vultr_inference_api_key"] = "[REDACTED]"
+        if d.get("red_team_token"):
+            d["red_team_token"] = "[REDACTED]"
         return d
 
 

@@ -1,8 +1,8 @@
 # AURON Production Caddyfile
 # Reverse proxy to FastAPI backend on 127.0.0.1:8000
-
 {
 	admin localhost:2019
+	email anasbasti01@gmail.com
 }
 
 (common_config) {
@@ -23,6 +23,10 @@
 		}
 		format json
 	}
+}
+
+45.77.19.39.sslip.io {
+	import common_config
 }
 
 http://45.77.19.39, http://localhost, http://127.0.0.1 {
