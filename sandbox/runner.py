@@ -49,7 +49,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 
 # ─── Constants ────────────────────────────────────────────────────────────────
@@ -434,11 +434,16 @@ class SandboxRunner:
 
     # ── Public entry point ────────────────────────────────────────────────
 
-    def run(self, csv_path: Path, script_path: Path) -> dict:
+    def run(self, csv_path: Path, script_path: Path, task_id: Optional[str] = None) -> dict:
         """
         Execute a Python script against a CSV in a secure sandbox.
 
         Returns the execution receipt as a dictionary.
+
+        ``task_id`` is the canonical identifier from the database.  When
+        provided it is threaded through the receipt so that
+        receipt["task_id"] == the caller's task ID.  If omitted a fresh
+        UUID is generated (backward-compatible with direct CLI usage).
         """
         csv_path    = Path(csv_path).resolve()
         script_path = Path(script_path).resolve()
@@ -448,7 +453,7 @@ class SandboxRunner:
         if not script_path.is_file():
             raise FileNotFoundError(f"Script not found: {script_path}")
 
-        task_id      = str(uuid.uuid4())
+        task_id      = task_id or str(uuid.uuid4())
         attempt_id   = str(uuid.uuid4())
         container_name = f"{CONTAINER_PREFIX}{attempt_id}"
 

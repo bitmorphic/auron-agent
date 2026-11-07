@@ -78,19 +78,23 @@ class Orchestrator:
             receipts_dir=settings.receipts_dir,
         )
 
-    async def execute_task(self, task_id: str) -> dict[str, Any]:
+    async def execute_task(self, task_id: str, owner_session_id: Optional[str] = None) -> dict[str, Any]:
         """
         Execute full analysis pipeline for a registered task.
         Runs under a concurrency-limiting semaphore.
         """
         sem = _get_semaphore()
         async with sem:
-            return await self._run_pipeline(task_id)
+            return await self._run_pipeline(task_id, owner_session_id=owner_session_id)
 
-    async def _run_pipeline(self, task_id: str) -> dict[str, Any]:
+    async def _run_pipeline(self, task_id: str, owner_session_id: Optional[str] = None) -> dict[str, Any]:
         task = get_task(task_id)
         if not task:
             raise ValueError(f"Task '{task_id}' not found.")
+
+        # Derive owner from task record if not explicitly passed
+        if owner_session_id is None:
+            owner_session_id = task.get("owner_session_id")
 
         dataset = get_dataset(task["dataset_id"])
         if not dataset:
@@ -109,7 +113,7 @@ class Orchestrator:
         # ── Step 1: AI Planning ───────────────────────────────────────────────
         update_task_status(task_id, "planning")
         try:
-            plan = await self._plan_task(task_id, question, schema, preview)
+            plan = await self._plan_task(task_id, question, schema, preview, owner_session_id=owner_session_id)
             update_task_status(task_id, "generating", plan_json=json.dumps(plan))
         except Exception as e:
             logger.error(f"Planning failed for task {task_id}: {e}")
@@ -118,7 +122,7 @@ class Orchestrator:
 
         # ── Step 2: Code Generation & AST Validation ──────────────────────────
         try:
-            code = await self._generate_code(task_id, plan, schema, preview)
+            code = await self._generate_code(task_id, plan, schema, preview, owner_session_id=owner_session_id)
         except Exception as e:
             logger.error(f"Code generation failed for task {task_id}: {e}")
             update_task_status(task_id, "failed", error_message=f"Code generation failed: {str(e)}")
@@ -144,8 +148,10 @@ class Orchestrator:
             script_path.chmod(0o644)
 
             try:
-                # Run container synchronously in background thread to avoid blocking event loop
-                receipt = await asyncio.to_thread(self.runner.run, csv_path, script_path)
+                # Pass the canonical task_id into the runner so receipt.task_id == task.id
+                receipt = await asyncio.to_thread(
+                    self.runner.run, csv_path, script_path, task_id
+                )
             finally:
                 try:
                     script_path.unlink(missing_ok=True)
@@ -153,6 +159,13 @@ class Orchestrator:
                     pass
 
             latest_receipt = receipt
+
+            # Confirm the receipt carries the right task_id (defensive)
+            if receipt.get("task_id") != task_id:
+                logger.error(
+                    "Receipt task_id mismatch: expected %s, got %s",
+                    task_id, receipt.get("task_id")
+                )
 
             # Record attempt in SQLite
             exec_data = receipt["execution"]
@@ -173,12 +186,13 @@ class Orchestrator:
                 timed_out=exec_data["timed_out"],
                 oom_killed=exec_data["oom_killed"],
                 receipt_json=json.dumps(receipt),
+                owner_session_id=owner_session_id,
             )
 
             # Record validated artifacts
             for art in receipt.get("artifacts", []):
                 art_name = art["name"]
-                art_path = str(settings.receipts_dir / f"{receipt['task_id']}_{receipt['attempt_id']}" / "artifacts" / art_name)
+                art_path = str(settings.receipts_dir / f"{task_id}_{receipt['attempt_id']}" / "artifacts" / art_name)
                 record_artifact(
                     task_id=task_id,
                     filename=art_name,
@@ -187,6 +201,7 @@ class Orchestrator:
                     sha256=art["sha256"],
                     mime=art.get("mime_type", art.get("mime", "application/octet-stream")),
                     attempt_id=attempt_id,
+                    owner_session_id=owner_session_id,
                 )
 
             # Check for success
@@ -212,6 +227,7 @@ class Orchestrator:
                     stderr=out_data["stderr"],
                     plan=plan,
                     schema=schema,
+                    owner_session_id=owner_session_id,
                 )
                 attempt_number += 1
             except Exception as e:
@@ -240,6 +256,7 @@ class Orchestrator:
                     stdout=out_data["stdout"],
                     artifacts=artifacts,
                     exit_code=exec_data["exit_code"],
+                    owner_session_id=owner_session_id,
                 )
             except Exception as e:
                 logger.warning(f"Explainer agent failed: {e}. Falling back to default summary.")
@@ -272,6 +289,7 @@ class Orchestrator:
         question: str,
         schema: dict[str, Any],
         preview: list[dict[str, Any]],
+        owner_session_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """Invoke Planner agent and validate returned plan schema."""
         user_prompt = build_planner_user_prompt(question, schema, preview)
@@ -291,6 +309,7 @@ class Orchestrator:
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
             success=True,
+            owner_session_id=owner_session_id,
         )
 
         try:
@@ -314,6 +333,7 @@ class Orchestrator:
         plan: dict[str, Any],
         schema: dict[str, Any],
         preview: list[dict[str, Any]],
+        owner_session_id: Optional[str] = None,
     ) -> str:
         """Invoke Coder agent and validate Python AST."""
         user_prompt = build_coder_user_prompt(plan, schema, preview)
@@ -334,6 +354,7 @@ class Orchestrator:
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
             success=True,
+            owner_session_id=owner_session_id,
         )
 
         code = clean_python_code(resp["content"])
@@ -349,6 +370,7 @@ class Orchestrator:
         stderr: str,
         plan: dict[str, Any],
         schema: dict[str, Any],
+        owner_session_id: Optional[str] = None,
     ) -> str:
         """Invoke Repairer agent to fix failed execution script."""
         user_prompt = build_repairer_user_prompt(prior_code, stderr, plan, schema)
@@ -369,6 +391,7 @@ class Orchestrator:
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
             success=True,
+            owner_session_id=owner_session_id,
         )
 
         code = clean_python_code(resp["content"])
@@ -385,6 +408,7 @@ class Orchestrator:
         stdout: str,
         artifacts: list[dict[str, Any]],
         exit_code: int,
+        owner_session_id: Optional[str] = None,
     ) -> str:
         """Invoke Explainer agent to summarize findings from captured evidence."""
         user_prompt = build_explainer_user_prompt(
@@ -410,6 +434,7 @@ class Orchestrator:
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
             success=True,
+            owner_session_id=owner_session_id,
         )
 
         return resp["content"]

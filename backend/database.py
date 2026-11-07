@@ -1,17 +1,24 @@
 """
 AURON SQLite Database Layer
-Handles schema creation, connections with WAL mode, and persistent CRUD operations.
+Handles schema creation, connections with WAL mode, persistent CRUD operations,
+anonymous workspace sessions, and strict ownership isolation.
 Source of Truth: PRD v3.0 §13 & §15.
 """
 
+import hashlib
 import json
+import logging
 import sqlite3
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
 from backend.config import settings
+
+logger = logging.getLogger("auron.database")
+
+LEGACY_SESSION_ID = "00000000-0000-0000-0000-legacy000000"
 
 
 def _utc_now_iso() -> str:
@@ -34,10 +41,18 @@ def get_db_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
 
 
 def init_db(db_path: Optional[Path] = None) -> None:
-    """Initialize database tables per PRD §13 and §15."""
+    """Initialize database tables and run safe incremental migrations."""
     conn = get_db_connection(db_path)
     with conn:
         conn.executescript("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            id TEXT PRIMARY KEY,
+            token_hash TEXT UNIQUE NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT
+        );
+
         CREATE TABLE IF NOT EXISTS datasets (
             id TEXT PRIMARY KEY,
             filename TEXT NOT NULL,
@@ -50,6 +65,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             schema_json TEXT NOT NULL,
             preview_json TEXT NOT NULL,
             is_sample INTEGER DEFAULT 0,
+            owner_session_id TEXT,
             created_at TEXT NOT NULL
         );
 
@@ -63,6 +79,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             summary_md TEXT,
             error_message TEXT,
             receipt_hash TEXT,
+            owner_session_id TEXT,
             created_at TEXT NOT NULL,
             completed_at TEXT,
             FOREIGN KEY (dataset_id) REFERENCES datasets(id)
@@ -83,6 +100,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             timed_out INTEGER DEFAULT 0,
             oom_killed INTEGER DEFAULT 0,
             receipt_json TEXT,
+            owner_session_id TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (task_id) REFERENCES tasks(id)
         );
@@ -96,6 +114,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             file_size INTEGER NOT NULL,
             sha256 TEXT NOT NULL,
             mime TEXT NOT NULL,
+            owner_session_id TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (task_id) REFERENCES tasks(id),
             FOREIGN KEY (attempt_id) REFERENCES attempts(id)
@@ -113,6 +132,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             duration_ms REAL DEFAULT 0.0,
             success INTEGER DEFAULT 1,
             error_message TEXT,
+            owner_session_id TEXT,
             created_at TEXT NOT NULL,
             FOREIGN KEY (task_id) REFERENCES tasks(id)
         );
@@ -127,9 +147,11 @@ def init_db(db_path: Optional[Path] = None) -> None:
             classification TEXT NOT NULL,
             started_at TEXT NOT NULL,
             duration_ms REAL DEFAULT 0.0,
-            evidence_json TEXT NOT NULL
+            evidence_json TEXT NOT NULL,
+            owner_session_id TEXT
         );
 
+        CREATE INDEX IF NOT EXISTS idx_sessions_token_hash ON sessions(token_hash);
         CREATE INDEX IF NOT EXISTS idx_tasks_dataset ON tasks(dataset_id);
         CREATE INDEX IF NOT EXISTS idx_attempts_task ON attempts(task_id);
         CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);
@@ -137,8 +159,13 @@ def init_db(db_path: Optional[Path] = None) -> None:
         CREATE INDEX IF NOT EXISTS idx_redteam_probe ON redteam_runs(probe_id);
         """)
 
-    # Migration for existing database instances: ensure columns exist
-    with conn:
+        # Incremental migrations for existing database instances: ensure owner_session_id columns exist
+        for table in ["datasets", "tasks", "attempts", "artifacts", "inference_calls", "redteam_runs"]:
+            try:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN owner_session_id TEXT")
+            except Exception:
+                pass
+
         try:
             conn.execute("ALTER TABLE inference_calls ADD COLUMN requested_model TEXT")
         except Exception:
@@ -148,6 +175,111 @@ def init_db(db_path: Optional[Path] = None) -> None:
         except Exception:
             pass
 
+        # Create reserved legacy session record
+        legacy_hash = hashlib.sha256(b"auron_reserved_legacy_session").hexdigest()
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO sessions (id, token_hash, created_at, expires_at, revoked_at)
+            VALUES (?, ?, ?, ?, NULL)
+            """,
+            (LEGACY_SESSION_ID, legacy_hash, "2026-01-01T00:00:00+00:00", "2099-12-31T23:59:59+00:00")
+        )
+
+        # Backfill existing legacy records that do not have an owner_session_id
+        for table in ["datasets", "tasks", "attempts", "artifacts", "inference_calls", "redteam_runs"]:
+            conn.execute(
+                f"UPDATE {table} SET owner_session_id = ? WHERE owner_session_id IS NULL",
+                (LEGACY_SESSION_ID,)
+            )
+
+        # Create ownership indexes
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_datasets_owner ON datasets(owner_session_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_owner ON tasks(owner_session_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_redteam_owner ON redteam_runs(owner_session_id);")
+
+        # Create unique constraint on (owner_session_id, filename) for sample datasets to guarantee idempotency
+        try:
+            conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_datasets_session_sample ON datasets(owner_session_id, filename) WHERE is_sample = 1;")
+        except Exception:
+            pass
+
+    conn.close()
+
+
+# ─── Sessions CRUD ────────────────────────────────────────────────────────────
+
+
+def create_session(
+    token_hash: str,
+    expires_days: int = 30,
+    session_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> dict[str, Any]:
+    """Create a new server-side session record."""
+    s_id = session_id or str(uuid.uuid4())
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=expires_days)
+    now_iso = now.isoformat()
+    expires_iso = expires.isoformat()
+
+    conn = get_db_connection(db_path)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO sessions (id, token_hash, created_at, expires_at, revoked_at)
+            VALUES (?, ?, ?, ?, NULL)
+            """,
+            (s_id, token_hash, now_iso, expires_iso)
+        )
+    conn.close()
+    return {
+        "id": s_id,
+        "token_hash": token_hash,
+        "created_at": now_iso,
+        "expires_at": expires_iso,
+        "revoked_at": None,
+    }
+
+
+def get_session_by_token_hash(token_hash: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+    """Look up an active, unrevoked, non-expired session by token hash."""
+    conn = get_db_connection(db_path)
+    cur = conn.execute("SELECT * FROM sessions WHERE token_hash = ?", (token_hash,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+
+    s = dict(row)
+    if s.get("revoked_at"):
+        return None
+
+    # Check expiration
+    try:
+        exp_dt = datetime.fromisoformat(s["expires_at"])
+        if datetime.now(timezone.utc) >= exp_dt:
+            return None
+    except Exception:
+        pass
+
+    return s
+
+
+def get_session(session_id: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+    """Retrieve session by UUID."""
+    conn = get_db_connection(db_path)
+    cur = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,))
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def revoke_session(session_id: str, db_path: Optional[Path] = None) -> None:
+    """Revoke a session immediately."""
+    now = _utc_now_iso()
+    conn = get_db_connection(db_path)
+    with conn:
+        conn.execute("UPDATE sessions SET revoked_at = ? WHERE id = ?", (now, session_id))
     conn.close()
 
 
@@ -166,10 +298,12 @@ def create_dataset(
     preview: list[dict],
     is_sample: bool = False,
     dataset_id: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> dict[str, Any]:
-    """Store a newly validated dataset record."""
+    """Store a newly validated dataset record with owner session."""
     d_id = dataset_id or str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     now = _utc_now_iso()
     schema_str = json.dumps(schema)
     preview_str = json.dumps(preview)
@@ -181,23 +315,33 @@ def create_dataset(
             INSERT INTO datasets (
                 id, filename, storage_path, file_hash, file_size_bytes,
                 row_count, column_count, encoding, schema_json, preview_json,
-                is_sample, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                is_sample, owner_session_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 d_id, filename, storage_path, file_hash, file_size_bytes,
                 row_count, column_count, encoding, schema_str, preview_str,
-                1 if is_sample else 0, now
+                1 if is_sample else 0, owner_id, now
             )
         )
     conn.close()
-    return get_dataset(d_id, db_path=db_path)  # type: ignore
+    return get_dataset(d_id, owner_session_id=None, db_path=db_path)  # type: ignore
 
 
-def get_dataset(dataset_id: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
-    """Retrieve a dataset by its UUID."""
+def get_dataset(
+    dataset_id: str,
+    owner_session_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> Optional[dict[str, Any]]:
+    """
+    Retrieve a dataset by UUID.
+    If owner_session_id is provided, enforces that dataset is owned by that session.
+    """
     conn = get_db_connection(db_path)
-    cur = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,))
+    if owner_session_id is not None:
+        cur = conn.execute("SELECT * FROM datasets WHERE id = ? AND owner_session_id = ?", (dataset_id, owner_session_id))
+    else:
+        cur = conn.execute("SELECT * FROM datasets WHERE id = ?", (dataset_id,))
     row = cur.fetchone()
     conn.close()
     if not row:
@@ -209,13 +353,48 @@ def get_dataset(dataset_id: str, db_path: Optional[Path] = None) -> Optional[dic
     return res
 
 
-def list_datasets(include_samples: bool = True, db_path: Optional[Path] = None) -> list[dict[str, Any]]:
-    """List datasets, optionally filtering out samples."""
+def get_dataset_by_name_and_session(
+    filename: str,
+    owner_session_id: str,
+    is_sample: bool = True,
+    db_path: Optional[Path] = None,
+) -> Optional[dict[str, Any]]:
+    """Retrieve an existing sample dataset for a session to prevent duplicates."""
     conn = get_db_connection(db_path)
-    if include_samples:
-        cur = conn.execute("SELECT * FROM datasets ORDER BY created_at DESC")
+    cur = conn.execute(
+        "SELECT * FROM datasets WHERE filename = ? AND owner_session_id = ? AND is_sample = ? ORDER BY created_at DESC LIMIT 1",
+        (filename, owner_session_id, 1 if is_sample else 0),
+    )
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    res = dict(row)
+    res["is_sample"] = bool(res["is_sample"])
+    res["schema"] = json.loads(res["schema_json"])
+    res["preview"] = json.loads(res["preview_json"])
+    return res
+
+
+def list_datasets(
+    owner_session_id: Optional[str] = None,
+    include_samples: bool = True,
+    db_path: Optional[Path] = None,
+) -> list[dict[str, Any]]:
+    """
+    List datasets. If owner_session_id is provided, strictly restricts to that session.
+    """
+    conn = get_db_connection(db_path)
+    if owner_session_id is not None:
+        if include_samples:
+            cur = conn.execute("SELECT * FROM datasets WHERE owner_session_id = ? ORDER BY created_at DESC", (owner_session_id,))
+        else:
+            cur = conn.execute("SELECT * FROM datasets WHERE owner_session_id = ? AND is_sample = 0 ORDER BY created_at DESC", (owner_session_id,))
     else:
-        cur = conn.execute("SELECT * FROM datasets WHERE is_sample = 0 ORDER BY created_at DESC")
+        if include_samples:
+            cur = conn.execute("SELECT * FROM datasets ORDER BY created_at DESC")
+        else:
+            cur = conn.execute("SELECT * FROM datasets WHERE is_sample = 0 ORDER BY created_at DESC")
     rows = cur.fetchall()
     conn.close()
     out = []
@@ -235,23 +414,25 @@ def create_task(
     dataset_id: str,
     question: str,
     task_id: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> dict[str, Any]:
-    """Create a new task with 'pending' status."""
+    """Create a new task with 'pending' status and session ownership."""
     t_id = task_id or str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     now = _utc_now_iso()
     conn = get_db_connection(db_path)
     with conn:
         conn.execute(
             """
             INSERT INTO tasks (
-                id, dataset_id, question, status, created_at
-            ) VALUES (?, ?, ?, ?, ?)
+                id, dataset_id, question, status, owner_session_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (t_id, dataset_id, question, "pending", now)
+            (t_id, dataset_id, question, "pending", owner_id, now)
         )
     conn.close()
-    return get_task(t_id, db_path=db_path)  # type: ignore
+    return get_task(t_id, owner_session_id=None, db_path=db_path)  # type: ignore
 
 
 def update_task_status(
@@ -296,10 +477,17 @@ def update_task_status(
     conn.close()
 
 
-def get_task(task_id: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+def get_task(
+    task_id: str,
+    owner_session_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> Optional[dict[str, Any]]:
     """Retrieve task details, attempts, artifacts, and inference records."""
     conn = get_db_connection(db_path)
-    cur = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+    if owner_session_id is not None:
+        cur = conn.execute("SELECT * FROM tasks WHERE id = ? AND owner_session_id = ?", (task_id, owner_session_id))
+    else:
+        cur = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
     row = cur.fetchone()
     if not row:
         conn.close()
@@ -338,16 +526,25 @@ def get_task(task_id: str, db_path: Optional[Path] = None) -> Optional[dict[str,
     return task_dict
 
 
-def list_tasks(dataset_id: Optional[str] = None, db_path: Optional[Path] = None) -> list[dict[str, Any]]:
-    """List recent tasks, optionally filtered by dataset."""
+def list_tasks(
+    owner_session_id: Optional[str] = None,
+    dataset_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> list[dict[str, Any]]:
+    """List recent tasks, restricted to owner session when provided."""
     conn = get_db_connection(db_path)
+    clauses = []
+    params: list[Any] = []
+    if owner_session_id is not None:
+        clauses.append("owner_session_id = ?")
+        params.append(owner_session_id)
     if dataset_id:
-        cur = conn.execute(
-            "SELECT * FROM tasks WHERE dataset_id = ? ORDER BY created_at DESC",
-            (dataset_id,)
-        )
-    else:
-        cur = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC")
+        clauses.append("dataset_id = ?")
+        params.append(dataset_id)
+
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    sql = f"SELECT * FROM tasks {where_sql} ORDER BY created_at DESC"
+    cur = conn.execute(sql, params)
     rows = cur.fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -371,10 +568,12 @@ def record_attempt(
     oom_killed: bool,
     receipt_json: str,
     attempt_id: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> str:
     """Record a container execution attempt."""
     att_id = attempt_id or str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     now = _utc_now_iso()
     conn = get_db_connection(db_path)
     with conn:
@@ -383,14 +582,14 @@ def record_attempt(
             INSERT INTO attempts (
                 id, task_id, attempt_number, code, exit_code, status,
                 stdout, stderr, stdout_truncated, stderr_truncated,
-                duration_ms, timed_out, oom_killed, receipt_json, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                duration_ms, timed_out, oom_killed, receipt_json, owner_session_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 att_id, task_id, attempt_number, code, exit_code, status,
                 stdout, stderr, 1 if stdout_truncated else 0, 1 if stderr_truncated else 0,
                 duration_ms, 1 if timed_out else 0, 1 if oom_killed else 0,
-                receipt_json, now
+                receipt_json, owner_id, now
             )
         )
     conn.close()
@@ -405,10 +604,12 @@ def record_artifact(
     sha256: str,
     mime: str,
     attempt_id: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> str:
     """Record an output artifact."""
     art_id = str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     now = _utc_now_iso()
     conn = get_db_connection(db_path)
     with conn:
@@ -416,10 +617,10 @@ def record_artifact(
             """
             INSERT INTO artifacts (
                 id, task_id, attempt_id, filename, storage_path,
-                file_size, sha256, mime, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                file_size, sha256, mime, owner_session_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (art_id, task_id, attempt_id, filename, storage_path, file_size, sha256, mime, now)
+            (art_id, task_id, attempt_id, filename, storage_path, file_size, sha256, mime, owner_id, now)
         )
     conn.close()
     return art_id
@@ -436,10 +637,12 @@ def record_inference_call(
     error_message: Optional[str] = None,
     requested_model: Optional[str] = None,
     returned_model: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> str:
     """Record an LLM inference call for observability and audit."""
     call_id = str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     now = _utc_now_iso()
     req_m = requested_model or model_name
     ret_m = returned_model or model_name
@@ -449,12 +652,12 @@ def record_inference_call(
             """
             INSERT INTO inference_calls (
                 id, task_id, role, model_name, requested_model, returned_model,
-                prompt_tokens, completion_tokens, duration_ms, success, error_message, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                prompt_tokens, completion_tokens, duration_ms, success, error_message, owner_session_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 call_id, task_id, role, ret_m, req_m, ret_m,
-                prompt_tokens, completion_tokens, duration_ms, 1 if success else 0, error_message, now
+                prompt_tokens, completion_tokens, duration_ms, 1 if success else 0, error_message, owner_id, now
             )
         )
     conn.close()
@@ -475,10 +678,12 @@ def record_redteam_run(
     duration_ms: float = 0.0,
     evidence: Optional[dict[str, Any]] = None,
     run_id: Optional[str] = None,
+    owner_session_id: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> str:
     """Record a Red Team probe execution result."""
     rid = run_id or str(uuid.uuid4())
+    owner_id = owner_session_id or LEGACY_SESSION_ID
     evidence_json = json.dumps(evidence or {})
     conn = get_db_connection(db_path)
     with conn:
@@ -486,32 +691,49 @@ def record_redteam_run(
             """
             INSERT INTO redteam_runs (
                 id, probe_id, probe_name, expected, observed, mechanism,
-                classification, started_at, duration_ms, evidence_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                classification, started_at, duration_ms, evidence_json, owner_session_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 rid, probe_id, probe_name, expected, observed, mechanism,
-                classification, started_at, duration_ms, evidence_json
+                classification, started_at, duration_ms, evidence_json, owner_id
             )
         )
     conn.close()
     return rid
 
 
-def list_redteam_runs(limit: int = 50, db_path: Optional[Path] = None) -> list[dict[str, Any]]:
+def list_redteam_runs(
+    limit: int = 50,
+    owner_session_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> list[dict[str, Any]]:
     """List recent Red Team probe runs ordered by started_at DESC."""
     conn = get_db_connection(db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, probe_id, probe_name, expected, observed, mechanism,
-               classification, started_at, duration_ms, evidence_json
-        FROM redteam_runs
-        ORDER BY started_at DESC
-        LIMIT ?
-        """,
-        (limit,)
-    )
+    if owner_session_id is not None:
+        cursor.execute(
+            """
+            SELECT id, probe_id, probe_name, expected, observed, mechanism,
+                   classification, started_at, duration_ms, evidence_json
+            FROM redteam_runs
+            WHERE owner_session_id = ?
+            ORDER BY started_at DESC
+            LIMIT ?
+            """,
+            (owner_session_id, limit)
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, probe_id, probe_name, expected, observed, mechanism,
+                   classification, started_at, duration_ms, evidence_json
+            FROM redteam_runs
+            ORDER BY started_at DESC
+            LIMIT ?
+            """,
+            (limit,)
+        )
     rows = cursor.fetchall()
     conn.close()
     result = []
@@ -525,19 +747,34 @@ def list_redteam_runs(limit: int = 50, db_path: Optional[Path] = None) -> list[d
     return result
 
 
-def get_redteam_run(run_id: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+def get_redteam_run(
+    run_id: str,
+    owner_session_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> Optional[dict[str, Any]]:
     """Get a single Red Team run by ID."""
     conn = get_db_connection(db_path)
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, probe_id, probe_name, expected, observed, mechanism,
-               classification, started_at, duration_ms, evidence_json
-        FROM redteam_runs
-        WHERE id = ?
-        """,
-        (run_id,)
-    )
+    if owner_session_id is not None:
+        cursor.execute(
+            """
+            SELECT id, probe_id, probe_name, expected, observed, mechanism,
+                   classification, started_at, duration_ms, evidence_json
+            FROM redteam_runs
+            WHERE id = ? AND owner_session_id = ?
+            """,
+            (run_id, owner_session_id)
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT id, probe_id, probe_name, expected, observed, mechanism,
+                   classification, started_at, duration_ms, evidence_json
+            FROM redteam_runs
+            WHERE id = ?
+            """,
+            (run_id,)
+        )
     row = cursor.fetchone()
     conn.close()
     if not row:
@@ -548,5 +785,3 @@ def get_redteam_run(run_id: str, db_path: Optional[Path] = None) -> Optional[dic
     except Exception:
         d["evidence"] = {}
     return d
-
-

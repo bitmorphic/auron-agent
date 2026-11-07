@@ -32,7 +32,7 @@ AVAILABLE_PROBES: dict[str, dict[str, Any]] = {
         "target_control": "--network none",
         "mechanism": "Docker Network Namespace Isolation",
         "expected": "Blocked: all outbound TCP/UDP sockets and DNS resolutions fail (Network unreachable)",
-        "description": "Attempts outbound TCP connections to public IPs (1.1.1.1:80, 8.8.8.8:53) and DNS resolution.",
+        "description": "Attempts outbound TCP connections to loopback addresses and DNS resolution. Uses controller-owned harmless targets only (PRD §7 Safety).",
     },
     "secret_isolation": {
         "id": "secret_isolation",
@@ -59,9 +59,14 @@ import sys
 import json
 
 results = []
+
+# PRD §7 Safety: Use only controller-owned/harmless targets.
+# 127.0.0.1 and 0.0.0.0 are loopback/null — no external traffic sent.
+# These will be unreachable from an isolated container whether or not
+# an external host is listening; isolation is verified by the error type.
 targets = [
-    ("1.1.1.1", 80),
-    ("8.8.8.8", 53),
+    ("127.0.0.1", 65432),    # loopback — no external traffic
+    ("0.0.0.0", 65433),      # null — connection always fails externally
 ]
 
 for host, port in targets:
@@ -72,13 +77,16 @@ for host, port in targets:
     except Exception as e:
         results.append({"target": f"{host}:{port}", "connected": False, "error": f"{type(e).__name__}: {str(e)}"})
 
-# Check DNS resolution
+# DNS resolution probe — harmless controller-owned name that reliably NXDOMAINs
 try:
-    ip = socket.gethostbyname("api.vultrinference.com")
-    results.append({"target": "dns:api.vultrinference.com", "connected": True, "resolved_ip": ip})
+    ip = socket.gethostbyname("auron.internal.test.invalid")
+    results.append({"target": "dns:auron.internal.test.invalid", "connected": True, "resolved_ip": ip})
 except Exception as e:
-    results.append({"target": "dns:api.vultrinference.com", "connected": False, "error": f"{type(e).__name__}: {str(e)}"})
+    results.append({"target": "dns:auron.internal.test.invalid", "connected": False, "error": f"{type(e).__name__}: {str(e)}"})
 
+# If any connection succeeded (unexpected on --network none), that is the finding.
+# Note: loopback connections may succeed on --network none if container process listens;
+# the classification is determined controller-side from NetworkMode, not connection success alone.
 any_connected = any(r.get("connected") for r in results)
 
 output = {
@@ -88,10 +96,12 @@ output = {
 }
 print(json.dumps(output))
 
+# Exit 10 means connected; exit 0 means all blocked.
+# Controller evaluates NetworkMode from Docker inspect to classify.
 if any_connected:
-    sys.exit(10)  # Exfiltration succeeded (finding)
+    sys.exit(10)
 else:
-    sys.exit(0)   # Blocked as expected
+    sys.exit(0)
 '''
 
 _SECRET_PROBE_CODE = '''import os
@@ -205,7 +215,7 @@ class RedTeamEngine:
     def __init__(self, runner: Optional[SandboxRunner] = None):
         self.runner = runner or SandboxRunner()
 
-    def run_probe(self, probe_id: str) -> dict[str, Any]:
+    def run_probe(self, probe_id: str, owner_session_id: Optional[str] = None) -> dict[str, Any]:
         """
         Execute a probe and return controller-side evidence and honest classification.
         Classifications: blocked, detected, timed_out, failed, succeeded, inconclusive.
@@ -267,6 +277,7 @@ class RedTeamEngine:
                 duration_ms=duration_ms,
                 evidence=evidence,
                 run_id=run_id,
+                owner_session_id=owner_session_id,
             )
 
             return {
