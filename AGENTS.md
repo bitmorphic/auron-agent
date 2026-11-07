@@ -30,12 +30,3 @@ Inference for LLM calls.
   bounded tmpfs for /tmp and /out, narrow read-only mounts for input and code.
 - Receipt assembled by trusted backend code, never by LLM.
 - Containment Card populated from actual Docker inspection data, not expected values.
-
-## Current milestone
-
-**Milestone 3 — Production Deployment on Vultr**
-
-Pre-deployment audit → SSH verification → Linux security validation → Production
-server setup (Caddy, systemd, UFW) → Live Vultr Serverless Inference validation →
-Public HTTPS deployment & live execution verification.
-
