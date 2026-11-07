@@ -128,10 +128,17 @@ def validate_plan_schema(plan: dict[str, Any]) -> dict[str, Any]:
 def clean_python_code(raw_text: str) -> str:
     """Extract clean Python code string from raw LLM completion."""
     text = raw_text.strip()
-    # Check for markdown fences
+    # Check for complete markdown fences
     match = re.search(r"```(?:python)?\s*(.*?)\s*```", text, re.DOTALL)
     if match:
         return match.group(1).strip()
+    # If opening fence exists without closing fence
+    open_match = re.search(r"```(?:python)?\s*(.*)", text, re.DOTALL)
+    if open_match:
+        code_part = open_match.group(1).strip()
+        if code_part.endswith("```"):
+            code_part = code_part[:-3].strip()
+        return code_part
     return text
 
 

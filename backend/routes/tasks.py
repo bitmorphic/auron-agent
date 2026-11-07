@@ -51,9 +51,36 @@ def build_containment_card(receipt: dict[str, Any]) -> dict[str, Any]:
     user = config.get("User", "unknown")
     cap_drop = host_config.get("CapDrop") or []
     sec_opts = host_config.get("SecurityOpt") or []
-    mem_bytes = host_config.get("Memory", 0)
+    mem_bytes = host_config.get("Memory")
+    nano_cpus = host_config.get("NanoCpus", 0)
     pids_limit = host_config.get("PidsLimit", 0)
+    mounts = inspect_data.get("Mounts") or []
     cleanup_verified = receipt.get("cleanup_verified", False)
+
+    # Memory evaluation
+    if mem_bytes is None or not isinstance(mem_bytes, (int, float)) or mem_bytes <= 0:
+        mem_observed = "unknown"
+        mem_status = "policy_violation"
+    elif mem_bytes == 512 * 1024 * 1024:
+        mem_observed = "512 MB"
+        mem_status = "pass"
+    else:
+        mem_observed = f"{round(mem_bytes / (1024 * 1024), 1)} MB"
+        mem_status = "policy_violation"
+
+    # CPU evaluation
+    if nano_cpus == 1_000_000_000:
+        cpu_observed = "1.0 CPU (1 core)"
+        cpu_status = "pass"
+    elif nano_cpus:
+        cpu_observed = f"{nano_cpus / 1e9:.1f} CPU"
+        cpu_status = "warning"
+    else:
+        cpu_observed = "unrestricted"
+        cpu_status = "warning"
+
+    # Docker socket check in mounts
+    has_docker_sock = any("docker.sock" in str(m.get("Source", "")) or "docker.sock" in str(m.get("Destination", "")) for m in mounts)
 
     return {
         "network_isolation": {
@@ -83,18 +110,29 @@ def build_containment_card(receipt: dict[str, Any]) -> dict[str, Any]:
         },
         "memory_limit": {
             "name": "Memory Limit (512 MB)",
+            "observed": mem_observed,
             "observed_bytes": mem_bytes,
-            "status": "pass" if mem_bytes == 512 * 1024 * 1024 else "warning",
+            "status": mem_status,
+        },
+        "cpu_limit": {
+            "name": "CPU Limit (1.0 Core)",
+            "observed": cpu_observed,
+            "status": cpu_status,
         },
         "pids_limit": {
             "name": "PID Limit (64)",
             "observed": pids_limit,
-            "status": "pass" if pids_limit == 64 else "warning",
+            "status": "pass" if pids_limit == 64 else "policy_violation",
         },
         "output_storage": {
             "name": "Output Storage Limit (20 MB tmpfs)",
             "observed": policy.get("output_mount", "bounded tmpfs 20 MB"),
             "status": "pass",
+        },
+        "docker_socket_shield": {
+            "name": "Docker Socket Isolated",
+            "observed": "Not Mounted" if not has_docker_sock else "MOUNTED (CRITICAL)",
+            "status": "pass" if not has_docker_sock else "policy_violation",
         },
         "cleanup_verified": {
             "name": "Container Removed & Verified",
@@ -149,6 +187,8 @@ async def get_task_details(task_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Task not found.")
 
     res = dict(task)
+    if "summary" not in res:
+        res["summary"] = res.get("summary_md")
 
     # Sanitize artifacts list to not reveal host storage path
     safe_artifacts = []

@@ -319,6 +319,7 @@ class Orchestrator:
             system_prompt=CODER_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             temperature=0.2,
+            max_tokens=4096,
         )
 
         record_inference_call(
@@ -351,6 +352,7 @@ class Orchestrator:
             system_prompt=REPAIRER_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             temperature=0.1,
+            max_tokens=4096,
         )
 
         record_inference_call(

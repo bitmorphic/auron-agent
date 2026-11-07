@@ -62,7 +62,7 @@ EXECUTION ENVIRONMENT & RESTRICTIONS:
    - Call `plt.close('all')`
 7. Always print a concise, structured JSON summary of the results to stdout at the end:
    `print(json.dumps({"status": "success", "summary": {...}}))`
-8. Return ONLY valid executable Python code. Do not wrap in markdown or backticks. If you must use markdown backticks, output ```python ... ``` cleanly.
+8. Return ONLY valid executable Python code inside a single ```python ... ``` block. Be direct and concise. Do NOT include markdown explanations outside the code block.
 """
 
 def build_coder_user_prompt(plan: dict[str, Any], schema: dict[str, Any], preview: list[dict[str, Any]]) -> str:

@@ -172,3 +172,4 @@ bash /home/auron/auron/scripts/deploy.sh
 # Rollback to previous state
 bash /home/auron/auron/scripts/rollback.sh
 ```
+

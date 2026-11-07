@@ -39,3 +39,4 @@ sleep 2
 HEALTH=$(curl -s http://127.0.0.1:8000/api/health || echo "FAILED")
 echo "Health status after rollback: ${HEALTH}"
 echo "=== [AURON] Rollback completed ==="
+
