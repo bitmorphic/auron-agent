@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     max_cols: int = Field(default=200, alias="MAX_COLS")
     max_question_chars: int = Field(default=2000, alias="MAX_QUESTION_CHARS")
 
+    # Red Team Arena settings (PRD §11 & §14)
+    red_team_enabled: bool = Field(default=True, alias="RED_TEAM_ENABLED")
+    red_team_token: str = Field(default="auron-redteam-demo-2026", alias="RED_TEAM_TOKEN")
+
     # File and directory paths
     data_dir: Path = Field(default=Path("data"))
     db_path: Path = Field(default=Path("data/auron.db"))

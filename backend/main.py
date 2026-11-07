@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.config import settings
 from backend.database import init_db, list_datasets, create_dataset
 from backend.csv_tools import validate_and_parse_csv, save_uploaded_csv
-from backend.routes import health, datasets, tasks
+from backend.routes import health, datasets, tasks, redteam
 from sandbox.runner import SandboxRunner, reap_orphaned_containers
 
 # Configure logging
@@ -116,6 +116,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router)
 app.include_router(datasets.router)
 app.include_router(tasks.router)
+app.include_router(redteam.router)
 
 # Mount frontend interface
 frontend_html = Path("frontend/index.html")

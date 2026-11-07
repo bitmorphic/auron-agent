@@ -117,10 +117,24 @@ def init_db(db_path: Optional[Path] = None) -> None:
             FOREIGN KEY (task_id) REFERENCES tasks(id)
         );
 
+        CREATE TABLE IF NOT EXISTS redteam_runs (
+            id TEXT PRIMARY KEY,
+            probe_id TEXT NOT NULL,
+            probe_name TEXT NOT NULL,
+            expected TEXT NOT NULL,
+            observed TEXT NOT NULL,
+            mechanism TEXT NOT NULL,
+            classification TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            duration_ms REAL DEFAULT 0.0,
+            evidence_json TEXT NOT NULL
+        );
+
         CREATE INDEX IF NOT EXISTS idx_tasks_dataset ON tasks(dataset_id);
         CREATE INDEX IF NOT EXISTS idx_attempts_task ON attempts(task_id);
         CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);
         CREATE INDEX IF NOT EXISTS idx_inference_task ON inference_calls(task_id);
+        CREATE INDEX IF NOT EXISTS idx_redteam_probe ON redteam_runs(probe_id);
         """)
 
     # Migration for existing database instances: ensure columns exist
@@ -445,4 +459,94 @@ def record_inference_call(
         )
     conn.close()
     return call_id
+
+
+# ─── Red Team Runs CRUD ───────────────────────────────────────────────────────
+
+
+def record_redteam_run(
+    probe_id: str,
+    probe_name: str,
+    expected: str,
+    observed: str,
+    mechanism: str,
+    classification: str,
+    started_at: str,
+    duration_ms: float = 0.0,
+    evidence: Optional[dict[str, Any]] = None,
+    run_id: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> str:
+    """Record a Red Team probe execution result."""
+    rid = run_id or str(uuid.uuid4())
+    evidence_json = json.dumps(evidence or {})
+    conn = get_db_connection(db_path)
+    with conn:
+        conn.execute(
+            """
+            INSERT INTO redteam_runs (
+                id, probe_id, probe_name, expected, observed, mechanism,
+                classification, started_at, duration_ms, evidence_json
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                rid, probe_id, probe_name, expected, observed, mechanism,
+                classification, started_at, duration_ms, evidence_json
+            )
+        )
+    conn.close()
+    return rid
+
+
+def list_redteam_runs(limit: int = 50, db_path: Optional[Path] = None) -> list[dict[str, Any]]:
+    """List recent Red Team probe runs ordered by started_at DESC."""
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, probe_id, probe_name, expected, observed, mechanism,
+               classification, started_at, duration_ms, evidence_json
+        FROM redteam_runs
+        ORDER BY started_at DESC
+        LIMIT ?
+        """,
+        (limit,)
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    result = []
+    for r in rows:
+        d = dict(r)
+        try:
+            d["evidence"] = json.loads(d["evidence_json"])
+        except Exception:
+            d["evidence"] = {}
+        result.append(d)
+    return result
+
+
+def get_redteam_run(run_id: str, db_path: Optional[Path] = None) -> Optional[dict[str, Any]]:
+    """Get a single Red Team run by ID."""
+    conn = get_db_connection(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, probe_id, probe_name, expected, observed, mechanism,
+               classification, started_at, duration_ms, evidence_json
+        FROM redteam_runs
+        WHERE id = ?
+        """,
+        (run_id,)
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return None
+    d = dict(row)
+    try:
+        d["evidence"] = json.loads(d["evidence_json"])
+    except Exception:
+        d["evidence"] = {}
+    return d
+
 
