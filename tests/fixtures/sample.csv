@@ -1,0 +1,12 @@
+date,product,quantity,price,region
+2024-01-15,Widget A,100,29.99,North
+2024-01-16,Widget B,50,49.99,South
+2024-01-17,Widget C,75,19.99,East
+2024-01-18,Widget A,120,29.99,West
+2024-01-19,Widget B,80,49.99,North
+2024-01-20,Widget C,60,19.99,South
+2024-01-21,Widget A,90,29.99,East
+2024-01-22,Widget B,110,49.99,West
+2024-01-23,Widget C,45,19.99,North
+2024-01-24,Widget A,130,29.99,South
+

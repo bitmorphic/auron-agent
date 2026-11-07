@@ -1,0 +1,27 @@
+customer_id,tenure_months,contract_type,internet_service,monthly_charges,total_charges,churn
+CUST-1001,1,Month-to-month,Fiber,70.35,70.35,Yes
+CUST-1002,34,One year,DSL,56.95,1889.50,No
+CUST-1003,2,Month-to-month,DSL,53.85,108.15,Yes
+CUST-1004,45,One year,Fiber,42.30,1840.75,No
+CUST-1005,2,Month-to-month,Fiber,70.70,151.65,Yes
+CUST-1006,8,Month-to-month,Fiber,99.65,820.50,Yes
+CUST-1007,22,Month-to-month,DSL,89.10,1949.40,No
+CUST-1008,10,Month-to-month,DSL,29.75,301.90,No
+CUST-1009,28,Month-to-month,Fiber,104.80,3046.05,Yes
+CUST-1010,62,Two year,DSL,56.15,3487.95,No
+CUST-1011,13,Month-to-month,Fiber,89.85,1160.80,Yes
+CUST-1012,16,One year,Fiber,18.95,326.80,No
+CUST-1013,58,Two year,Fiber,100.35,5681.10,No
+CUST-1014,49,One year,DSL,54.65,2744.30,No
+CUST-1015,25,Month-to-month,Fiber,105.50,2686.05,Yes
+CUST-1016,69,Two year,Fiber,113.25,7895.15,No
+CUST-1017,52,One year,DSL,20.65,1022.95,No
+CUST-1018,71,Two year,Fiber,106.70,7382.25,No
+CUST-1019,10,Month-to-month,DSL,45.25,452.50,Yes
+CUST-1020,21,Month-to-month,DSL,39.70,833.70,No
+CUST-1021,12,One year,DSL,19.80,237.60,No
+CUST-1022,61,Two year,Fiber,67.85,4138.85,No
+CUST-1023,1,Month-to-month,DSL,20.15,20.15,Yes
+CUST-1024,40,One year,Fiber,85.50,3420.00,No
+CUST-1025,3,Month-to-month,Fiber,75.30,225.90,Yes
+

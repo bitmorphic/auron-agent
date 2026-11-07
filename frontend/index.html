@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURON — Autonomous Analysis. Verified Execution.</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    body { background-color: #0a0e1a; color: #e2e8f0; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .card { background-color: #111827; border: 1px solid #1f2937; }
+    .card-accent { border-color: #3b82f6; }
+    .badge-pass { background-color: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-warn { background-color: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-fail { background-color: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="flex justify-between items-center border-b border-gray-800 pb-4">
+      <div>
+        <h1 class="text-3xl font-extrabold tracking-tight text-white flex items-center space-x-2">
+          <span class="text-blue-500">AURON</span>
+          <span class="text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800 font-mono">MVP v0.1</span>
+        </h1>
+        <p class="text-sm text-gray-400">Autonomous analysis. Verified execution. Disposable Docker sandbox.</p>
+      </div>
+      <div id="system-status" class="text-xs mono text-gray-400 text-right">
+        Connecting to API...
+      </div>
+    </header>
+
+    <!-- Step 1: Dataset Ingest -->
+    <section class="card p-5 rounded-lg shadow space-y-4">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-white">1. Select or Upload Dataset</h2>
+        <div class="space-x-2">
+          <button onclick="loadSample('sales_clean')" class="text-xs bg-gray-800 hover:bg-gray-700 text-blue-400 font-medium px-3 py-1.5 rounded border border-gray-700">Use Sample: Sales</button>
+          <button onclick="loadSample('customer_churn')" class="text-xs bg-gray-800 hover:bg-gray-700 text-cyan-400 font-medium px-3 py-1.5 rounded border border-gray-700">Use Sample: Churn</button>
+        </div>
+      </div>
+
+      <div class="border-2 border-dashed border-gray-700 rounded-lg p-6 text-center hover:border-blue-500 transition cursor-pointer" onclick="document.getElementById('csv-file-input').click()">
+        <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
+        <p class="text-sm text-gray-300">Click to upload or drag & drop CSV file</p>
+        <p class="text-xs text-gray-500 mt-1">Max 10 MB • Max 100,000 rows • Max 200 columns</p>
+      </div>
+
+      <div id="dataset-preview-container" class="hidden space-y-3 pt-2">
+        <div class="flex justify-between items-center text-xs text-gray-400">
+          <div>
+            Dataset: <span id="ds-filename" class="font-bold text-white"></span>
+            (<span id="ds-rows"></span> rows, <span id="ds-cols"></span> columns, SHA: <span id="ds-hash" class="mono text-gray-500"></span>)
+          </div>
+          <span class="badge-pass px-2 py-0.5 rounded font-mono">Validated</span>
+        </div>
+        <div class="overflow-x-auto border border-gray-800 rounded max-h-48">
+          <table id="preview-table" class="min-w-full text-xs text-left text-gray-300"></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Question & Execution -->
+    <section class="card p-5 rounded-lg shadow space-y-4">
+      <h2 class="text-lg font-semibold text-white">2. Ask Natural-Language Question</h2>
+      <div class="flex space-x-2">
+        <input type="text" id="question-input" placeholder="e.g. Which region generated the highest total revenue? Plot a bar chart."
+               class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+        <button id="run-btn" onclick="startAnalysis()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm px-5 py-2 rounded transition flex items-center space-x-1">
+          <span>Run Analysis</span>
+        </button>
+      </div>
+      <div id="task-status-bar" class="hidden p-3 rounded bg-gray-900 border border-gray-800 flex justify-between items-center text-xs">
+        <div class="flex items-center space-x-2">
+          <span id="spinner" class="animate-spin text-blue-400">⚡</span>
+          <span>Status: <strong id="task-status-text" class="text-blue-400 uppercase font-mono">PENDING</strong></span>
+        </div>
+        <div id="task-id-display" class="mono text-gray-500"></div>
+      </div>
+    </section>
+
+    <!-- Step 3: Analysis Results, Plan, Code & Chart -->
+    <section id="results-section" class="hidden space-y-6">
+
+      <!-- Containment Card -->
+      <div class="card p-5 rounded-lg border-l-4 border-l-blue-500 space-y-3">
+        <div class="flex justify-between items-center">
+          <div>
+            <h3 class="text-md font-bold text-white flex items-center space-x-2">
+              <span>Containment Card</span>
+              <span class="text-xs font-normal text-gray-400">— Observed Docker container inspection</span>
+            </h3>
+          </div>
+          <a id="receipt-download-link" href="#" target="_blank" class="text-xs bg-gray-800 hover:bg-gray-700 text-cyan-400 border border-gray-700 px-3 py-1 rounded mono">Download Receipt JSON</a>
+        </div>
+        <div id="containment-grid" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs"></div>
+      </div>
+
+      <!-- Explanation & Chart -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Findings & Explanation -->
+        <div class="card p-5 rounded-lg space-y-3">
+          <h3 class="text-md font-bold text-white">AI Analysis Explanation</h3>
+          <div id="explanation-content" class="text-sm text-gray-300 space-y-2 leading-relaxed"></div>
+        </div>
+
+        <!-- Generated Chart Artifact -->
+        <div class="card p-5 rounded-lg space-y-3 flex flex-col items-center justify-center">
+          <h3 class="text-md font-bold text-white self-start">Generated Visualization</h3>
+          <div id="chart-container" class="w-full flex justify-center py-2">
+            <p class="text-xs text-gray-500">No chart generated.</p>
+          </div>
+          <div id="artifacts-list" class="w-full text-xs text-gray-400 pt-2 border-t border-gray-800 space-y-1"></div>
+        </div>
+      </div>
+
+      <!-- Plan and Generated Code Tabs -->
+      <div class="card p-5 rounded-lg space-y-4">
+        <div class="flex space-x-4 border-b border-gray-800 pb-2">
+          <button onclick="switchTab('plan')" id="tab-btn-plan" class="text-sm font-semibold text-blue-400 border-b-2 border-blue-400 pb-1">AI Plan</button>
+          <button onclick="switchTab('code')" id="tab-btn-code" class="text-sm font-semibold text-gray-400 hover:text-white pb-1">Generated Python Code</button>
+          <button onclick="switchTab('output')" id="tab-btn-output" class="text-sm font-semibold text-gray-400 hover:text-white pb-1">Sandbox Execution Logs</button>
+        </div>
+
+        <!-- Plan Tab Content -->
+        <div id="tab-plan" class="space-y-3">
+          <div><span class="text-xs text-gray-500 uppercase mono">Goal:</span> <p id="plan-goal" class="text-sm text-gray-200 mt-0.5"></p></div>
+          <div><span class="text-xs text-gray-500 uppercase mono">Steps:</span> <ol id="plan-steps" class="list-decimal list-inside text-xs text-gray-300 mt-1 space-y-1"></ol></div>
+          <div><span class="text-xs text-gray-500 uppercase mono">Expected Artifacts:</span> <div id="plan-artifacts" class="flex space-x-2 mt-1"></div></div>
+        </div>
+
+        <!-- Code Tab Content -->
+        <div id="tab-code" class="hidden">
+          <pre id="code-content" class="bg-gray-950 p-4 rounded text-xs mono text-green-400 overflow-x-auto max-h-96"></pre>
+        </div>
+
+        <!-- Logs Tab Content -->
+        <div id="tab-output" class="hidden space-y-3">
+          <div>
+            <span class="text-xs text-gray-500 uppercase mono">STDOUT:</span>
+            <pre id="stdout-content" class="bg-gray-950 p-3 rounded text-xs mono text-gray-300 overflow-x-auto max-h-48"></pre>
+          </div>
+          <div>
+            <span class="text-xs text-gray-500 uppercase mono">STDERR:</span>
+            <pre id="stderr-content" class="bg-gray-950 p-3 rounded text-xs mono text-red-400 overflow-x-auto max-h-48"></pre>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <script>
+    let activeDatasetId = null;
+    let currentTaskId = null;
+    let pollInterval = null;
+
+    // Check backend health on load
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const data = await res.json();
+        document.getElementById('system-status').innerHTML = `
+          Docker: <span class="${data.docker_available ? 'text-green-400' : 'text-red-400'}">${data.docker_available ? 'Ready' : 'Unavailable'}</span> |
+          Inference: <span class="text-cyan-400 uppercase">${data.inference_mode}</span>
+        `;
+      } catch (e) {
+        document.getElementById('system-status').innerText = 'Backend connection error';
+      }
+    }
+    checkHealth();
+
+    // Load sample dataset
+    async function loadSample(name) {
+      try {
+        const res = await fetch('/api/datasets/sample', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sample_name: name })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        showDatasetPreview(data);
+      } catch (e) {
+        alert('Failed to load sample: ' + e.message);
+      }
+    }
+
+    // Handle CSV upload
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const res = await fetch('/api/datasets/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || 'Upload failed');
+        }
+        const data = await res.json();
+        showDatasetPreview(data);
+      } catch (e) {
+        alert('Upload Error: ' + e.message);
+      }
+    }
+
+    function showDatasetPreview(data) {
+      activeDatasetId = data.id;
+      document.getElementById('ds-filename').innerText = data.filename;
+      document.getElementById('ds-rows').innerText = data.row_count;
+      document.getElementById('ds-cols').innerText = data.column_count;
+      document.getElementById('ds-hash').innerText = data.file_hash.substring(0, 16) + '...';
+
+      const table = document.getElementById('preview-table');
+      table.innerHTML = '';
+
+      if (data.preview && data.preview.length > 0) {
+        const cols = Object.keys(data.preview[0]);
+        let thead = '<thead class="bg-gray-800 text-gray-400"><tr>';
+        cols.forEach(c => thead += `<th class="p-2 border-b border-gray-700">${c}</th>`);
+        thead += '</tr></thead>';
+
+        let tbody = '<tbody>';
+        data.preview.forEach(row => {
+          tbody += '<tr class="border-b border-gray-800/50 hover:bg-gray-800/30">';
+          cols.forEach(c => tbody += `<td class="p-2">${row[c] !== null ? row[c] : '<span class="text-gray-600">null</span>'}</td>`);
+          tbody += '</tr>';
+        });
+        tbody += '</tbody>';
+        table.innerHTML = thead + tbody;
+      }
+
+      document.getElementById('dataset-preview-container').classList.remove('hidden');
+    }
+
+    // Start Analysis
+    async function startAnalysis() {
+      if (!activeDatasetId) {
+        alert('Please select or upload a dataset first.');
+        return;
+      }
+      const question = document.getElementById('question-input').value.trim();
+      if (!question) {
+        alert('Please enter a question.');
+        return;
+      }
+
+      document.getElementById('run-btn').disabled = true;
+      document.getElementById('task-status-bar').classList.remove('hidden');
+      document.getElementById('results-section').classList.add('hidden');
+      document.getElementById('task-status-text').innerText = 'STARTING';
+
+      try {
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataset_id: activeDatasetId, question: question })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        currentTaskId = data.task_id;
+        document.getElementById('task-id-display').innerText = 'Task ID: ' + currentTaskId;
+
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(pollTaskStatus, 1500);
+      } catch (e) {
+        alert('Task error: ' + e.message);
+        document.getElementById('run-btn').disabled = false;
+      }
+    }
+
+    // Poll Task
+    async function pollTaskStatus() {
+      if (!currentTaskId) return;
+      try {
+        const res = await fetch('/api/tasks/' + currentTaskId);
+        if (!res.ok) return;
+        const task = await res.json();
+        document.getElementById('task-status-text').innerText = task.status;
+
+        if (task.status === 'completed' || task.status === 'failed') {
+          clearInterval(pollInterval);
+          document.getElementById('run-btn').disabled = false;
+          renderResults(task);
+        }
+      } catch (e) {
+        console.error('Polling error', e);
+      }
+    }
+
+    // Render Results
+    function renderResults(task) {
+      document.getElementById('results-section').classList.remove('hidden');
+
+      // Explanation
+      const expDiv = document.getElementById('explanation-content');
+      if (task.summary_md) {
+        expDiv.innerHTML = marked.parse(task.summary_md);
+      } else if (task.error_message) {
+        expDiv.innerHTML = `<div class="p-3 bg-red-950/50 border border-red-800 text-red-300 rounded text-xs mono">${task.error_message}</div>`;
+      }
+
+      // Plan
+      if (task.plan) {
+        document.getElementById('plan-goal').innerText = task.plan.goal || 'N/A';
+        const stepsOl = document.getElementById('plan-steps');
+        stepsOl.innerHTML = '';
+        (task.plan.steps || []).forEach(s => stepsOl.innerHTML += `<li>${s}</li>`);
+
+        const artDiv = document.getElementById('plan-artifacts');
+        artDiv.innerHTML = '';
+        (task.plan.expected_artifacts || []).forEach(a => {
+          artDiv.innerHTML += `<span class="px-2 py-0.5 rounded bg-gray-800 text-blue-400 text-xs mono">${a}</span>`;
+        });
+      }
+
+      // Code
+      document.getElementById('code-content').innerText = task.final_code || 'No code recorded.';
+
+      // Logs
+      const attempts = task.attempts || [];
+      if (attempts.length > 0) {
+        const last = attempts[attempts.length - 1];
+        document.getElementById('stdout-content').innerText = last.stdout || '(no stdout)';
+        document.getElementById('stderr-content').innerText = last.stderr || '(no stderr)';
+      }
+
+      // Artifacts & Chart
+      const chartContainer = document.getElementById('chart-container');
+      const artifactsList = document.getElementById('artifacts-list');
+      chartContainer.innerHTML = '<p class="text-xs text-gray-500">No chart generated.</p>';
+      artifactsList.innerHTML = '';
+
+      if (task.artifacts && task.artifacts.length > 0) {
+        task.artifacts.forEach(art => {
+          artifactsList.innerHTML += `
+            <div class="flex justify-between items-center py-1">
+              <span class="mono text-white">${art.filename} (${art.file_size} B)</span>
+              <a href="${art.download_url}" download class="text-blue-400 hover:underline">Download</a>
+            </div>
+          `;
+          if (art.filename.endsWith('.png')) {
+            chartContainer.innerHTML = `<img src="${art.download_url}" class="rounded border border-gray-800 max-h-72 object-contain shadow">`;
+          }
+        });
+      }
+
+      // Containment Card
+      const cardGrid = document.getElementById('containment-grid');
+      cardGrid.innerHTML = '';
+      if (task.containment_card) {
+        Object.values(task.containment_card).forEach(c => {
+          const badgeClass = c.status === 'pass' ? 'badge-pass' : (c.status === 'warning' ? 'badge-warn' : 'badge-fail');
+          cardGrid.innerHTML += `
+            <div class="p-2.5 rounded bg-gray-950 border border-gray-800/80 space-y-1">
+              <div class="text-gray-400 font-medium truncate">${c.name}</div>
+              <div class="flex items-center justify-between">
+                <span class="mono text-gray-300 truncate max-w-[120px]">${JSON.stringify(c.observed)}</span>
+                <span class="${badgeClass} px-1.5 py-0.5 rounded uppercase font-mono text-[10px]">${c.status}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Receipt link
+      document.getElementById('receipt-download-link').href = `/api/tasks/${task.id}/receipt`;
+    }
+
+    function switchTab(tab) {
+      ['plan', 'code', 'output'].forEach(t => {
+        document.getElementById(`tab-${t}`).classList.add('hidden');
+        document.getElementById(`tab-btn-${t}`).className = 'text-sm font-semibold text-gray-400 hover:text-white pb-1';
+      });
+      document.getElementById(`tab-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-btn-${tab}`).className = 'text-sm font-semibold text-blue-400 border-b-2 border-blue-400 pb-1';
+    }
+  </script>
+</body>
+</html>
+

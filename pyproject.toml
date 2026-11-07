@@ -1,0 +1,19 @@
+[project]
+name = "auron"
+version = "0.1.0"
+description = "AURON — Autonomous Analysis. Verified Execution."
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "docker: marks tests requiring Docker daemon",
+    "linux_only: marks tests requiring Linux host",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning:fastapi.*",
+    "ignore::DeprecationWarning:starlette.*",
+    "ignore::PendingDeprecationWarning:starlette.*",
+]
+

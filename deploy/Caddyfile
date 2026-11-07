@@ -1,0 +1,35 @@
+# AURON Production Caddyfile
+# Reverse proxy to FastAPI backend on 127.0.0.1:8000
+
+{
+	admin localhost:2019
+}
+
+(common_config) {
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:8000
+
+	log {
+		output file /var/log/caddy/auron-access.log {
+			roll_size 50mb
+			roll_keep 5
+		}
+		format json
+	}
+}
+
+http://45.77.19.39, http://localhost, http://127.0.0.1 {
+	import common_config
+}
+
+https://45.77.19.39, https://localhost, https://127.0.0.1 {
+	tls internal
+	import common_config
+}

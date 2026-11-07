@@ -1,0 +1,13 @@
+/var/log/auron/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 auron auron
+    postrotate
+        systemctl kill --kill-who=main --signal=USR1 auron.service 2>/dev/null || true
+    endscript
+}
+
