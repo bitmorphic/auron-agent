@@ -31,6 +31,7 @@ async def health_check() -> dict:
         "version": "0.1.0",
         "docker_available": docker_ok,
         "inference_mode": "live_vultr" if has_live_key else "mock",
+        "model_name": settings.model_name,
         "sandbox_image_tag": settings.sandbox_image_tag,
     }
 

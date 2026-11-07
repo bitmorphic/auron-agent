@@ -217,6 +217,15 @@ async def get_task_details(task_id: str) -> dict:
                 pass
     res["containment_card"] = containment_card
 
+    # Model transparency info
+    calls = res.get("inference_calls", [])
+    if calls:
+        res["requested_model"] = calls[0].get("requested_model") or calls[0].get("model_name")
+        res["returned_model"] = calls[0].get("returned_model") or calls[0].get("model_name")
+    else:
+        res["requested_model"] = settings.model_name
+        res["returned_model"] = settings.model_name
+
     return res
 
 
@@ -237,7 +246,26 @@ async def get_task_receipt(task_id: str) -> dict:
         raise HTTPException(status_code=404, detail="Receipt data missing.")
 
     try:
-        return json.loads(receipt_json)
+        receipt_obj = json.loads(receipt_json)
+        calls = task.get("inference_calls", [])
+        if calls:
+            receipt_obj["inference"] = {
+                "requested_model": calls[0].get("requested_model") or calls[0].get("model_name"),
+                "returned_model": calls[0].get("returned_model") or calls[0].get("model_name"),
+                "total_calls": len(calls),
+                "calls": [
+                    {
+                        "role": c.get("role"),
+                        "requested_model": c.get("requested_model") or c.get("model_name"),
+                        "returned_model": c.get("returned_model") or c.get("model_name"),
+                        "prompt_tokens": c.get("prompt_tokens"),
+                        "completion_tokens": c.get("completion_tokens"),
+                        "duration_ms": c.get("duration_ms"),
+                    }
+                    for c in calls
+                ],
+            }
+        return receipt_obj
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to decode receipt: {e}")
 

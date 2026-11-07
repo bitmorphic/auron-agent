@@ -284,7 +284,9 @@ class Orchestrator:
         record_inference_call(
             task_id=task_id,
             role="planner",
-            model_name=resp["model"],
+            model_name=resp.get("returned_model", resp["model"]),
+            requested_model=resp.get("requested_model", resp["model"]),
+            returned_model=resp.get("returned_model", resp["model"]),
             prompt_tokens=resp["prompt_tokens"],
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
@@ -325,7 +327,9 @@ class Orchestrator:
         record_inference_call(
             task_id=task_id,
             role="coder",
-            model_name=resp["model"],
+            model_name=resp.get("returned_model", resp["model"]),
+            requested_model=resp.get("requested_model", resp["model"]),
+            returned_model=resp.get("returned_model", resp["model"]),
             prompt_tokens=resp["prompt_tokens"],
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
@@ -358,7 +362,9 @@ class Orchestrator:
         record_inference_call(
             task_id=task_id,
             role="repairer",
-            model_name=resp["model"],
+            model_name=resp.get("returned_model", resp["model"]),
+            requested_model=resp.get("requested_model", resp["model"]),
+            returned_model=resp.get("returned_model", resp["model"]),
             prompt_tokens=resp["prompt_tokens"],
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],
@@ -397,7 +403,9 @@ class Orchestrator:
         record_inference_call(
             task_id=task_id,
             role="explainer",
-            model_name=resp["model"],
+            model_name=resp.get("returned_model", resp["model"]),
+            requested_model=resp.get("requested_model", resp["model"]),
+            returned_model=resp.get("returned_model", resp["model"]),
             prompt_tokens=resp["prompt_tokens"],
             completion_tokens=resp["completion_tokens"],
             duration_ms=resp["duration_ms"],

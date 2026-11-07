@@ -106,6 +106,8 @@ def init_db(db_path: Optional[Path] = None) -> None:
             task_id TEXT NOT NULL,
             role TEXT NOT NULL,
             model_name TEXT NOT NULL,
+            requested_model TEXT,
+            returned_model TEXT,
             prompt_tokens INTEGER DEFAULT 0,
             completion_tokens INTEGER DEFAULT 0,
             duration_ms REAL DEFAULT 0.0,
@@ -120,6 +122,18 @@ def init_db(db_path: Optional[Path] = None) -> None:
         CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);
         CREATE INDEX IF NOT EXISTS idx_inference_task ON inference_calls(task_id);
         """)
+
+    # Migration for existing database instances: ensure columns exist
+    with conn:
+        try:
+            conn.execute("ALTER TABLE inference_calls ADD COLUMN requested_model TEXT")
+        except Exception:
+            pass
+        try:
+            conn.execute("ALTER TABLE inference_calls ADD COLUMN returned_model TEXT")
+        except Exception:
+            pass
+
     conn.close()
 
 
@@ -406,23 +420,27 @@ def record_inference_call(
     duration_ms: float = 0.0,
     success: bool = True,
     error_message: Optional[str] = None,
+    requested_model: Optional[str] = None,
+    returned_model: Optional[str] = None,
     db_path: Optional[Path] = None,
 ) -> str:
     """Record an LLM inference call for observability and audit."""
     call_id = str(uuid.uuid4())
     now = _utc_now_iso()
+    req_m = requested_model or model_name
+    ret_m = returned_model or model_name
     conn = get_db_connection(db_path)
     with conn:
         conn.execute(
             """
             INSERT INTO inference_calls (
-                id, task_id, role, model_name, prompt_tokens,
-                completion_tokens, duration_ms, success, error_message, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                id, task_id, role, model_name, requested_model, returned_model,
+                prompt_tokens, completion_tokens, duration_ms, success, error_message, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                call_id, task_id, role, model_name, prompt_tokens,
-                completion_tokens, duration_ms, 1 if success else 0, error_message, now
+                call_id, task_id, role, ret_m, req_m, ret_m,
+                prompt_tokens, completion_tokens, duration_ms, 1 if success else 0, error_message, now
             )
         )
     conn.close()

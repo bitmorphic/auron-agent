@@ -22,7 +22,7 @@ class Settings(BaseSettings):
         alias="VULTR_INFERENCE_BASE_URL"
     )
     model_name: str = Field(
-        default="llama-3.3-70b-instruct-fp8",
+        default="deepseek-v4.1-flash-1017",
         alias="MODEL_NAME"
     )
 

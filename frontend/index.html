@@ -77,6 +77,7 @@
         <div class="flex items-center space-x-2">
           <span id="spinner" class="animate-spin text-blue-400">⚡</span>
           <span>Status: <strong id="task-status-text" class="text-blue-400 uppercase font-mono">PENDING</strong></span>
+          <span id="task-model-display" class="hidden text-indigo-400 font-mono bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-800"></span>
         </div>
         <div id="task-id-display" class="mono text-gray-500"></div>
       </div>
@@ -166,7 +167,8 @@
         const data = await res.json();
         document.getElementById('system-status').innerHTML = `
           Docker: <span class="${data.docker_available ? 'text-green-400' : 'text-red-400'}">${data.docker_available ? 'Ready' : 'Unavailable'}</span> |
-          Inference: <span class="text-cyan-400 uppercase">${data.inference_mode}</span>
+          Inference: <span class="text-cyan-400 uppercase">${data.inference_mode}</span> |
+          Model: <span class="text-indigo-400 font-mono">${data.model_name || 'deepseek-v4.1-flash-1017'}</span>
         `;
       } catch (e) {
         document.getElementById('system-status').innerText = 'Backend connection error';
@@ -286,6 +288,11 @@
         if (!res.ok) return;
         const task = await res.json();
         document.getElementById('task-status-text').innerText = task.status;
+        const modelDisplay = document.getElementById('task-model-display');
+        if (modelDisplay && (task.returned_model || task.requested_model)) {
+          modelDisplay.innerText = `Model: ${task.returned_model || task.requested_model}`;
+          modelDisplay.classList.remove('hidden');
+        }
 
         if (task.status === 'completed' || task.status === 'failed') {
           clearInterval(pollInterval);

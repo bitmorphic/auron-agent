@@ -61,3 +61,4 @@ def test_model(model_name: str):
 
 # Test configured model first
 test_model(settings.model_name)
+

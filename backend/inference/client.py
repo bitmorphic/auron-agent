@@ -109,10 +109,13 @@ class LiveVultrClient(BaseInferenceClient):
         choice = data.get("choices", [{}])[0]
         content = choice.get("message", {}).get("content", "")
         usage = data.get("usage", {})
+        returned_model = data.get("model") or self.model_name
 
         return {
             "content": content,
-            "model": self.model_name,
+            "requested_model": self.model_name,
+            "returned_model": returned_model,
+            "model": returned_model,
             "prompt_tokens": usage.get("prompt_tokens", 0),
             "completion_tokens": usage.get("completion_tokens", 0),
             "duration_ms": duration_ms,
@@ -155,6 +158,8 @@ class MockInferenceClient(BaseInferenceClient):
 
         return {
             "content": content,
+            "requested_model": self.model_name,
+            "returned_model": self.model_name,
             "model": self.model_name,
             "prompt_tokens": len(user_prompt.split()),
             "completion_tokens": len(content.split()),

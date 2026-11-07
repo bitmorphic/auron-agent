@@ -1,5 +1,4 @@
-"""Inspect model metadata from Vultr catalogue.
-"""
+"""Inspect Vultr catalogue for llama and deepseek."""
 import os
 import sys
 import json
@@ -27,5 +26,13 @@ headers = {
 req = urllib.request.Request("https://api.vultrinference.com/v1/models", headers=headers)
 with urllib.request.urlopen(req, timeout=15) as resp:
     data = json.loads(resp.read().decode("utf-8")).get("data", [])
-    for m in data:
-        print(f"ID: {m.get('id'):<35} | Object: {m.get('object')} | Owned By: {m.get('owned_by')}")
+    model_ids = sorted([m.get("id") for m in data if isinstance(m, dict)])
+    
+    print(f"Total models in catalogue: {len(model_ids)}")
+    llama_models = [m for m in model_ids if "llama" in m.lower()]
+    print(f"Llama models present: {llama_models}")
+    print(f"'llama-3.3-70b-instruct-fp8' present: {'llama-3.3-70b-instruct-fp8' in model_ids}")
+    print(f"'deepseek-v4.1-flash-1017' present: {'deepseek-v4.1-flash-1017' in model_ids}")
+    print("\nComplete catalogue list:")
+    for m in model_ids:
+        print(f"  - {m}")
