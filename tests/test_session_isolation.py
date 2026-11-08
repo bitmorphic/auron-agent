@@ -4,7 +4,6 @@ Covers all acceptance criteria from the Release-Blocking Remediation brief.
 Source of Truth: PRD v3.0 §13, §14, §15.
 """
 
-import hashlib
 import io
 import json
 import uuid
@@ -15,10 +14,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from backend.config import settings
-from backend.database import init_db, create_session, get_session_by_token_hash
+from backend.database import create_session, get_session_by_token_hash, init_db
 from backend.main import app
-from backend.session import generate_session_token, hash_session_token, COOKIE_NAME
-
+from backend.session import generate_session_token, hash_session_token
 
 SAMPLE_CSV = b"product,price,units\nLaptop,1200,5\nMouse,25,20\nMonitor,350,8\n"
 
@@ -27,30 +25,16 @@ SAMPLE_CSV = b"product,price,units\nLaptop,1200,5\nMouse,25,20\nMonitor,350,8\n"
 
 
 @pytest.fixture(autouse=True)
-def isolated_db(tmp_path: Path):
+def isolated_db(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Point every test to a fresh temp database and directory layout."""
     test_db = tmp_path / "test_session.db"
-    settings.db_path = test_db
-    settings.uploads_dir = tmp_path / "uploads"
-    settings.samples_dir = Path("data/samples")
-    settings.receipts_dir = tmp_path / "receipts"
+    monkeypatch.setattr(settings, "db_path", test_db)
+    monkeypatch.setattr(settings, "uploads_dir", tmp_path / "uploads")
+    monkeypatch.setattr(settings, "samples_dir", Path("data/samples"))
+    monkeypatch.setattr(settings, "receipts_dir", tmp_path / "receipts")
     settings.ensure_directories()
     init_db(test_db)
     yield
-
-
-def _new_client_with_fresh_session() -> tuple[TestClient, str]:
-    """
-    Create a TestClient with an already-bootstrapped session cookie.
-    Returns (client, session_id).
-    """
-    client = TestClient(app, raise_server_exceptions=True)
-    # Hit the bootstrap endpoint which mints session and sets cookie
-    resp = client.post("/api/session")
-    assert resp.status_code == 200
-    # The cookie should be set now — subsequent requests in the same client will carry it
-    session_id = getattr(settings, "db_path", None)   # just for type tracking; real session is in cookie
-    return client, resp
 
 
 @pytest.fixture
@@ -400,7 +384,7 @@ def test_receipt_task_id_matches_task_id_in_response(tmp_path: Path):
     When the orchestrator passes task_id to runner.run(), the receipt.task_id
     must equal the canonical task_id. Verify via runner interface directly.
     """
-    from sandbox.runner import SandboxRunner, SandboxPolicy
+    from sandbox.runner import SandboxPolicy, SandboxRunner
 
     runner = SandboxRunner(
         policy=SandboxPolicy(),
@@ -419,8 +403,10 @@ def test_receipt_task_id_matches_task_id_in_response(tmp_path: Path):
 def test_rate_limit_per_session():
     """Rate limiter must reject requests beyond the window ceiling."""
     import asyncio
-    from backend.rate_limit import check_rate_limit
+
     from fastapi import HTTPException
+
+    from backend.rate_limit import check_rate_limit
 
     async def _run():
         session_id = str(uuid.uuid4())
@@ -614,5 +600,5 @@ def test_session_expiry_invalidates_access():
     raw_token = generate_session_token()
     token_hash = hash_session_token(raw_token)
     # Expire 1 day in the past
-    session = create_session(token_hash=token_hash, expires_days=-1)
+    create_session(token_hash=token_hash, expires_days=-1)
     assert get_session_by_token_hash(token_hash) is None
