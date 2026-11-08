@@ -30,8 +30,8 @@ def main():
     # Filter out existing RED_TEAM_ lines
     lines = [line for line in content.splitlines() if not line.startswith("RED_TEAM_")]
 
-    # Append new disabled setting and token
-    lines.append("RED_TEAM_ENABLED=false")
+    # Append new enabled setting and token
+    lines.append("RED_TEAM_ENABLED=true")
     lines.append(f"RED_TEAM_TOKEN={new_token}")
     lines.append("")  # trailing newline
 

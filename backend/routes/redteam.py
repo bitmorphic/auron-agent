@@ -47,8 +47,9 @@ def _verify_redteam_access(
     provided = header_token or query_token or body_token or ""
     expected = settings.red_team_token.strip()
 
-    # If configured with a token, require exact match
-    if expected and provided != expected:
+    # If configured with a token, require exact match using constant-time comparison
+    import secrets
+    if expected and not secrets.compare_digest(provided, expected):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid Red Team authorization token.",

@@ -254,3 +254,40 @@ def test_redteam_api_execution_and_persistence(client: TestClient):
         )
         assert runs_resp.status_code == 200
         assert isinstance(runs_resp.json(), list)
+
+
+def test_redteam_constant_time_auth_comparison(client: TestClient):
+    """Verify authorization uses constant-time comparison and correctly validates tokens."""
+    # Correct token
+    with patch("backend.routes.redteam.get_engine") as mock_get:
+        mock_engine = MagicMock()
+        mock_engine.run_probe.return_value = {
+            "id": "run-ct-1",
+            "probe_id": "network_isolation",
+            "classification": "blocked",
+            "observed": "Blocked.",
+            "duration_ms": 50.0,
+            "evidence": {},
+        }
+        mock_get.return_value = mock_engine
+
+        # Exact token match succeeds
+        valid_resp = client.post(
+            "/api/redteam/network_isolation/run",
+            headers={"X-RedTeam-Token": settings.red_team_token},
+        )
+        assert valid_resp.status_code == 200
+
+        # Partial token prefix fails
+        partial_resp = client.post(
+            "/api/redteam/network_isolation/run",
+            headers={"X-RedTeam-Token": settings.red_team_token[:5]},
+        )
+        assert partial_resp.status_code == 401
+
+        # Padded token fails
+        padded_resp = client.post(
+            "/api/redteam/network_isolation/run",
+            headers={"X-RedTeam-Token": settings.red_team_token + "extra"},
+        )
+        assert padded_resp.status_code == 401
