@@ -1,6 +1,12 @@
-<p align="center">
-  <img src="assets/banner.png" alt="AURON — Autonomous Analysis. Verified Execution." width="100%">
-</p>
+<div align="center">
+  <img src="assets/banner.png" alt="Vultr Agent Rush Hackathon" width="80%">
+  <br><br>
+  <img src="auron-logo.png" alt="AURON Logo" width="180">
+  <br><br>
+  
+  <b>Team:</b> Brute Force<br>
+  <b>Participant:</b> Mohammad Anas (Solo Member)
+  <br><br>
 
 # AURON — Autonomous Analysis. Verified Execution.
 
