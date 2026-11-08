@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.config import settings
-from backend.database import init_db, list_datasets, create_dataset
+from backend.database import init_db, list_datasets, create_dataset, get_session
 from backend.csv_tools import validate_and_parse_csv, save_uploaded_csv
 from backend.routes import health, datasets, tasks, redteam
 from backend.session import (
@@ -102,9 +102,11 @@ async def session_middleware(request: Request, call_next):
 
     if existing:
         request.state.session_id = existing["id"]
+        request.state.is_new_session = False
     else:
         session_id, new_token = get_or_create_session(request)
         request.state.session_id = session_id
+        request.state.is_new_session = True
 
     response = await call_next(request)
 
@@ -124,27 +126,21 @@ async def bootstrap_session(request: Request, response: Response):
     Returns the session creation time and expiry. Never returns the token.
     The token is set as a Secure HttpOnly cookie.
     """
-    from backend.session import generate_session_token, hash_session_token
-    from backend.database import create_session, get_session_by_token_hash
+    session_id = getattr(request.state, "session_id", None)
+    is_new = getattr(request.state, "is_new_session", False)
+    session = get_session(session_id) if session_id else None
 
-    existing = get_session_from_request(request)
-    if existing:
+    if session:
         return {
-            "bootstrapped": False,
-            "created_at": existing.get("created_at"),
-            "expires_at": existing.get("expires_at"),
+            "bootstrapped": is_new,
+            "created_at": session.get("created_at"),
+            "expires_at": session.get("expires_at"),
         }
 
-    raw_token = generate_session_token()
-    token_hash = hash_session_token(raw_token)
-    session = create_session(token_hash=token_hash, expires_days=30)
-    request.state.session_id = session["id"]
-    set_session_cookie(response, raw_token, request=request)
-
     return {
-        "bootstrapped": True,
-        "created_at": session["created_at"],
-        "expires_at": session["expires_at"],
+        "bootstrapped": False,
+        "created_at": None,
+        "expires_at": None,
     }
 
 

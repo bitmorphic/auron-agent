@@ -248,7 +248,8 @@ def test_health_endpoint_public(client_a: TestClient):
     # Health must NOT expose inference API key
     response_text = json.dumps(data)
     assert "VULTR_INFERENCE_API_KEY" not in response_text
-    assert settings.vultr_inference_api_key not in response_text
+    if settings.vultr_inference_api_key:
+        assert settings.vultr_inference_api_key not in response_text
 
 
 def test_samples_catalogue_public(client_a: TestClient):
