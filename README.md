@@ -132,16 +132,69 @@ Captured Evidence & Containment Card
 
 ---
 
+## Try AURON with the Demo Dataset
+
+The exact dataset used in our recorded product demonstration is included in this repository.
+
+**Download:** [`examples/auron-demo-sales-5000.csv`](examples/auron-demo-sales-5000.csv)
+
+### Dataset Schema
+
+| Column | Type | Description |
+|---|---|---|
+| `date` | `YYYY-MM-DD` | Transaction date (2025-01-01 to 2025-12-31) |
+| `product` | string | Product name (8 distinct products) |
+| `category` | string | Product category (`Electronics`, `Accessories`) |
+| `region` | string | Sales region (`North`, `South`, `East`, `West`) |
+| `units_sold` | integer | Units sold in the transaction |
+| `unit_price` | decimal | Unit price in USD |
+| `revenue` | decimal | Total transaction revenue (`units_sold × unit_price`) |
+
+**Rows:** 5,000 &nbsp;|&nbsp; **Columns:** 7 &nbsp;|&nbsp; **SHA-256:** `071032a26469f8f6543bf8cb22ab3decbba28904aa7ceb95e96fdb96b15b2388`
+
+### Reproducible Analysis Prompt
+
+Upload `auron-demo-sales-5000.csv` to AURON's Analysis Workspace and enter:
+
+> *Which product generated the highest total revenue? Calculate total revenue for every product, rank them from highest to lowest, and generate a bar chart.*
+
+### Expected Results (Verified Against Actual CSV)
+
+| Metric | Value |
+|---|---|
+| Total revenue | **\$44,017,002.80** |
+| Average revenue per row | **\$8,803.40** |
+| Top product | **Alpha Laptop** |
+| Top-product revenue | **\$21,220,416.00** |
+| Revenue calculation mismatches | **0** |
+
+**All product revenues (descending):**
+
+| Product | Revenue |
+|---|---|
+| Alpha Laptop | \$21,220,416.00 |
+| Theta Camera | \$8,269,341.52 |
+| Zeta Tablet | \$6,134,503.50 |
+| Gamma Monitor | \$4,536,451.50 |
+| Eta Dock | \$1,452,399.85 |
+| Delta Keyboard | \$1,122,166.20 |
+| Epsilon Headset | \$836,223.90 |
+| Beta Mouse | \$445,500.33 |
+
+> These results were independently verified by computing totals directly from the CSV before documentation. The revenue column is numerically consistent with `units_sold × unit_price` across all 5,000 rows (zero mismatches).
+
+---
+
 ## Test Suite & Verification
 
-AURON's test suite contains **107 comprehensive tests** spanning API contracts, CSV defenses, AST validation, tamper-evident receipt verification, container containment, resource limits, and Red Team probes:
+AURON's test suite contains **145 comprehensive tests** spanning API contracts, CSV defenses, AST validation, tamper-evident receipt verification, container containment, resource limits, and Red Team probes:
 
 ```bash
 /home/auron/venv/bin/pytest tests/ -v
 ```
 
 ```text
-======================= 107 passed, 1 warning in 40.85s ========================
+======================= 145 passed, 1 warning in 51.22s ========================
 ```
 
 - **0 failed, 0 skipped**.
