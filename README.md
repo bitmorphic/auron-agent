@@ -140,19 +140,6 @@ AURON's test suite contains **107 comprehensive tests** spanning API contracts, 
 
 ---
 
-## Four-Minute Demo Script & Storyboard
-
-| Time | Scene | Action / Script Beat |
-|---|---|---|
-| **0:00 - 0:25** | **The Problem** | Explain that LLM agents generating code without execution verification or containment create a severe security blast radius. Introduce AURON: *"Autonomous analysis. Verified execution. Blast Radius Zero."* |
-| **0:25 - 1:15** | **Live Analysis** | Open the AURON dashboard at `https://45.77.19.39`. Load `sales_clean.csv`. Ask: *"Which product category generated the highest total revenue? Calculate total revenue for every category, rank the categories, and generate a bar chart."* Watch the live 5-stage progress: Planning ➔ Generating ➔ Sandbox Execution. |
-| **1:15 - 2:00** | **Results & Evidence** | Show the generated chart (`chart.png`), executive findings (Electronics: $141,150.00 / 87.8%), AST-verified Python code, and the **Containment Card** showing 8 verified Docker inspection parameters (`--network none`, UID 10001, 512 MB RAM, read-only rootfs). |
-| **2:00 - 2:45** | **Tamper-Evident Receipt** | Inspect the canonical execution receipt. Highlight the cryptographic SHA-256 hashes of the input CSV, generated code, container inspect metadata, and artifacts. Verify independent numeric validation matches ground truth. |
-| **2:45 - 3:30** | **Red Team Arena** | Switch to the Red Team Arena tab. Launch the **Outbound Network Exfiltration Probe**. Show live controller logs proving `--network none` blocked outbound socket connections to `1.1.1.1:80` and DNS. Launch the **Fork Bomb Probe** and show cgroups halting process creation at 62 PIDs. |
-| **3:30 - 4:00** | **Vultr Architecture & Wrap** | Highlight Vultr Dedicated VM and Vultr Serverless Inference (`deepseek-v4.1-flash-1017`). Conclude: *"AURON doesn't ask you to trust its sandbox. It shows you what ran, what happened, and which boundaries were enforced."* |
-
----
-
 ## Security Boundaries & Limitations
 
 Per `AGENTS.md` rules and PRD §10, we make **no claims of "100% security", "zero risk", or "unbreakable isolation"**:
