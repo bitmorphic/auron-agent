@@ -78,12 +78,12 @@ def set_session_cookie(
     Set Secure, HttpOnly, SameSite=Lax cookie on response.
     Never exposes token in body or JavaScript.
     """
-    # In production with Caddy/HTTPS, request is HTTPS or forwarded as HTTPS.
-    # In local testing with plain HTTP, avoid browser dropping cookie.
+    # In production behind Caddy/HTTPS, X-Forwarded-Proto is https.
+    # In tests or local HTTP, avoid setting secure=True so test client retains cookies.
     is_secure = False
     if request:
         proto = request.headers.get("x-forwarded-proto", request.url.scheme).lower()
-        if proto == "https" or not settings.debug:
+        if proto == "https":
             is_secure = True
     elif not settings.debug:
         is_secure = True
@@ -112,4 +112,3 @@ async def get_current_session_id(request: Request) -> str:
     session_id, _ = get_or_create_session(request)
     request.state.session_id = session_id
     return session_id
-
