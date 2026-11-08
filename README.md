@@ -1,10 +1,14 @@
+<p align="center">
+  <img src="assets/banner.png" alt="AURON — Autonomous Analysis. Verified Execution." width="100%">
+</p>
+
 # AURON — Autonomous Analysis. Verified Execution.
 
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/docker-hardened%20sandbox-blue.svg)](https://www.docker.com/)
 [![Vultr Serverless Inference](https://img.shields.io/badge/vultr-serverless%20inference-blue.svg)](https://www.vultr.com/products/serverless-inference/)
 [![FastAPI](https://img.shields.io/badge/fastapi-0.115+-green.svg)](https://fastapi.tiangolo.com/)
-[![Tests](https://img.shields.io/badge/tests-107%2F107%20passing-brightgreen.svg)](https://github.com/)
+[![Tests](https://img.shields.io/badge/tests-145%2F145%20passing-brightgreen.svg)](https://github.com/)
 
 An AI data-analysis agent that executes generated Python code inside disposable, isolated Docker containers on a dedicated Vultr VM, backed by tamper-evident SHA-256 receipts and powered by Vultr Serverless Inference.
 
