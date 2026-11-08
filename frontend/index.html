@@ -1,119 +1,156 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="en" class="h-full dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AURON — Developer & Security Operations Console</title>
+  <title>AURON — Autonomous Data Intelligence & Containment Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     :root {
-      --bg-app: #0B0F14;
-      --bg-sidebar: #0E141D;
-      --bg-panel: #111A25;
-      --bg-surface: #151F2B;
-      --bg-input: #0A0E15;
-      --border: #263445;
-      --border-subtle: #1C2633;
-      --border-accent: #25B8CE;
-      --text-primary: #E8EEF6;
-      --text-secondary: #9AA9BB;
-      --text-muted: #718198;
-      --cyan: #25B8CE;
-      --cyan-subtle: rgba(37, 184, 206, 0.12);
-      --green: #34D399;
-      --green-subtle: rgba(16, 185, 129, 0.12);
-      --amber: #FBBF24;
-      --amber-subtle: rgba(245, 158, 11, 0.12);
-      --red: #F87171;
-      --red-subtle: rgba(239, 68, 68, 0.12);
+      --bg-base: #06080E;
+      --bg-sidebar: #090D16;
+      --bg-header: #080C14;
+      --bg-panel: rgba(13, 18, 30, 0.75);
+      --bg-panel-elevated: rgba(17, 24, 40, 0.85);
+      --bg-well: #04060A;
+      --border-hairline: rgba(255, 255, 255, 0.08);
+      --border-hover: rgba(56, 189, 248, 0.35);
+      --cyan-accent: #00D2FF;
+      --cyan-glow: rgba(0, 210, 255, 0.15);
+      --emerald-accent: #10B981;
+      --amber-accent: #F59E0B;
+      --rose-accent: #F43F5E;
     }
 
     body {
-      background-color: var(--bg-app);
-      color: var(--text-primary);
+      background-color: var(--bg-base);
+      color: #F1F5F9;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
       margin: 0;
       padding: 0;
       height: 100%;
+      background-image: 
+        radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 210, 255, 0.06), transparent);
+      background-size: 24px 24px, 100% 100%;
     }
 
     .mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, monospace; }
 
-    /* Custom scrollbars */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg-app); }
-    ::-webkit-scrollbar-thumb { background: #263445; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #394B60; }
+    /* Custom high-contrast scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0, 210, 255, 0.4); }
 
-    /* Status Badges */
+    /* Hairline cards with subtle top bevel highlight */
+    .chert-panel {
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-hairline);
+      box-shadow: 
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+        0 8px 24px -4px rgba(0, 0, 0, 0.45);
+      border-radius: 10px;
+    }
+
+    .chert-panel-interactive {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .chert-panel-interactive:hover {
+      border-color: rgba(0, 210, 255, 0.25);
+      box-shadow: 
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+        0 12px 32px -4px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(0, 210, 255, 0.15);
+    }
+
+    /* Well container for code/terminal/preview */
+    .chert-well {
+      background-color: var(--bg-well);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.5);
+    }
+
+    /* Status Pills */
     .badge-pass {
-      background-color: var(--green-subtle);
-      color: var(--green);
-      border: 1px solid rgba(52, 211, 153, 0.25);
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.25);
     }
     .badge-warn {
-      background-color: var(--amber-subtle);
-      color: var(--amber);
-      border: 1px solid rgba(251, 191, 36, 0.25);
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #FBBF24;
+      border: 1px solid rgba(245, 158, 11, 0.25);
     }
     .badge-fail {
-      background-color: var(--red-subtle);
-      color: var(--red);
-      border: 1px solid rgba(248, 113, 113, 0.25);
+      background-color: rgba(244, 63, 94, 0.1);
+      color: #FB7185;
+      border: 1px solid rgba(244, 63, 94, 0.25);
     }
     .badge-neutral {
-      background-color: rgba(154, 169, 187, 0.1);
-      color: var(--text-secondary);
-      border: 1px solid rgba(154, 169, 187, 0.2);
+      background-color: rgba(148, 163, 184, 0.08);
+      color: #94A3B8;
+      border: 1px solid rgba(148, 163, 184, 0.15);
     }
     .badge-cyan {
-      background-color: var(--cyan-subtle);
-      color: var(--cyan);
-      border: 1px solid rgba(37, 184, 206, 0.25);
+      background-color: rgba(0, 210, 255, 0.1);
+      color: #38BDF8;
+      border: 1px solid rgba(0, 210, 255, 0.25);
     }
 
-    /* Panels & Surfaces */
-    .panel {
-      background-color: var(--bg-panel);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-    .panel-surface {
-      background-color: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-    }
-
-    /* Stepper dot pulses */
+    /* Stepper pulse */
     .stepper-active {
-      box-shadow: 0 0 0 4px rgba(37, 184, 206, 0.2);
+      box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.2), 0 0 12px rgba(0, 210, 255, 0.4);
+    }
+
+    /* Shimmer gradient for buttons */
+    .btn-gradient {
+      background: linear-gradient(135deg, #00D2FF 0%, #0284C7 100%);
+      box-shadow: 0 2px 10px rgba(0, 210, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-gradient:hover:not(:disabled) {
+      filter: brightness(1.1);
+      box-shadow: 0 4px 16px rgba(0, 210, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      transform: translateY(-1px);
+    }
+    .btn-gradient:active:not(:disabled) {
+      transform: translateY(0);
     }
   </style>
 </head>
 <body class="flex h-full overflow-hidden select-none">
 
   <!-- ======================================================================= -->
-  <!-- 1. LEFT SIDEBAR (230px Fixed)                                           -->
+  <!-- 1. LEFT SIDEBAR (Chert Obsidian Style)                                  -->
   <!-- ======================================================================= -->
-  <aside class="w-[230px] flex-shrink-0 bg-[#0E141D] border-r border-[#263445] flex flex-col justify-between z-20">
+  <aside class="w-[240px] flex-shrink-0 bg-[#090D16] border-r border-white/[0.07] flex flex-col justify-between z-20">
     
     <!-- Top Branding & Navigation -->
     <div class="flex flex-col">
       <!-- App Header -->
-      <div class="h-14 px-5 flex items-center justify-between border-b border-[#263445]">
+      <div class="h-14 px-4 flex items-center justify-between border-b border-white/[0.07] bg-[#070A11]/60">
         <div class="flex items-center space-x-2.5">
-          <div class="w-6 h-6 rounded bg-[#25B8CE]/15 border border-[#25B8CE]/40 flex items-center justify-center">
-            <svg class="w-3.5 h-3.5 text-[#25B8CE]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <div class="relative w-7 h-7 rounded-lg bg-gradient-to-br from-[#00D2FF]/20 to-sky-950/60 border border-[#00D2FF]/40 flex items-center justify-center shadow-[0_0_12px_rgba(0,210,255,0.25)]">
+            <svg class="w-4 h-4 text-[#00D2FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
+            <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00D2FF] animate-ping opacity-75"></span>
+            <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#00D2FF]"></span>
           </div>
           <div class="flex flex-col">
-            <span class="text-sm font-bold tracking-tight text-white leading-tight">AURON</span>
-            <span class="text-[9px] font-mono tracking-wider text-[#25B8CE] uppercase">Blast Radius Zero</span>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-sm font-bold tracking-tight text-white leading-none">AURON</span>
+              <span class="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/10 text-[#00D2FF] border border-[#00D2FF]/30 font-semibold">AI</span>
+            </div>
+            <span class="text-[9px] font-mono tracking-wider text-slate-400 uppercase mt-0.5">Blast Radius Zero</span>
           </div>
         </div>
       </div>
@@ -122,27 +159,28 @@
       <nav class="p-3 space-y-1 text-xs">
         <!-- Analysis Workspace -->
         <button onclick="switchNav('analysis')" id="nav-btn-analysis"
-                class="w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#E8EEF6] bg-[#151F2B] border border-[#263445] transition text-left">
-          <svg class="w-4 h-4 text-[#25B8CE]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-white bg-white/[0.08] border border-white/[0.1] shadow-sm transition text-left group">
+          <svg class="w-4 h-4 text-[#00D2FF]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span>Analysis</span>
+          <span class="flex-1">Analysis</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-[#00D2FF] opacity-80"></span>
         </button>
 
         <!-- Red Team Arena -->
         <button onclick="switchNav('redteam')" id="nav-btn-redteam"
-                class="w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition text-left">
-          <svg class="w-4 h-4 text-[#718198]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition text-left group">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
           </svg>
           <span class="flex-1">Red Team Arena</span>
-          <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 border border-slate-700">3</span>
+          <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800/80 text-slate-300 border border-slate-700">3 Probes</span>
         </button>
 
         <!-- Sample Runs -->
         <button onclick="switchNav('gallery')" id="nav-btn-gallery"
-                class="w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition text-left">
-          <svg class="w-4 h-4 text-[#718198]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition text-left group">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>Sample Runs</span>
@@ -150,8 +188,8 @@
 
         <!-- Architecture -->
         <button onclick="switchNav('architecture')" id="nav-btn-architecture"
-                class="w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition text-left">
-          <svg class="w-4 h-4 text-[#718198]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                class="w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition text-left group">
+          <svg class="w-4 h-4 text-slate-500 group-hover:text-slate-300 transition" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
           </svg>
           <span>Architecture</span>
@@ -160,19 +198,28 @@
     </div>
 
     <!-- Bottom Environment & System Telemetry -->
-    <div class="p-3 border-t border-[#263445] space-y-2 text-[11px]">
-      <div class="px-2 py-1.5 rounded bg-[#111A25] border border-[#263445] space-y-1">
-        <div class="flex items-center justify-between text-[#718198]">
-          <span>Infrastructure</span>
-          <span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800">PROD</span>
+    <div class="p-3 border-t border-white/[0.07] space-y-2 text-[11px] bg-[#070A11]/40">
+      <div class="p-2.5 rounded-lg bg-black/40 border border-white/[0.06] space-y-1.5">
+        <div class="flex items-center justify-between text-slate-400">
+          <span class="text-[10px] uppercase font-mono tracking-wider">Cloud Host</span>
+          <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 font-semibold flex items-center space-x-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>PROD</span>
+          </span>
         </div>
-        <div class="text-[#E8EEF6] font-medium truncate">Vultr VX1 Dedicated</div>
-        <div class="text-[#718198] mono text-[10px]">Tokyo • Dedicated Host Node</div>
+        <div class="text-white font-medium text-xs flex items-center justify-between">
+          <span>Vultr Bare-Metal</span>
+          <span class="text-[10px] text-slate-400 font-mono">Tokyo</span>
+        </div>
+        <div class="text-slate-400 mono text-[10px] flex items-center justify-between pt-0.5 border-t border-white/[0.04]">
+          <span>Dedicated Node</span>
+          <span class="text-slate-500">VX1</span>
+        </div>
       </div>
 
-      <div class="flex items-center justify-between px-2 text-[#718198] text-[10px] mono">
-        <span>AURON Engine</span>
-        <span>v0.1.0-prod</span>
+      <div class="flex items-center justify-between px-2 text-slate-400 text-[10px] mono">
+        <span class="text-slate-500">AURON Engine</span>
+        <span class="text-slate-400">v0.1.0-prod</span>
       </div>
     </div>
   </aside>
@@ -180,34 +227,37 @@
   <!-- ======================================================================= -->
   <!-- 2. MAIN APP SHELL (Top Utility Bar + Content Workspace)                 -->
   <!-- ======================================================================= -->
-  <div class="flex-1 flex flex-col h-full overflow-hidden bg-[#0B0F14]">
+  <div class="flex-1 flex flex-col h-full overflow-hidden bg-transparent">
 
     <!-- Top Utility Bar -->
-    <header class="h-14 flex-shrink-0 bg-[#0E141D] border-b border-[#263445] px-6 flex items-center justify-between z-10">
+    <header class="h-14 flex-shrink-0 bg-[#080C14]/80 backdrop-blur-md border-b border-white/[0.07] px-6 flex items-center justify-between z-10">
       <!-- Breadcrumb / View Title -->
       <div class="flex items-center space-x-2 text-xs">
-        <span class="text-[#718198] font-medium">AURON</span>
-        <span class="text-[#263445]">/</span>
-        <span id="breadcrumb-view" class="text-[#E8EEF6] font-semibold">Analysis Workspace</span>
+        <span class="text-slate-500 font-mono">AURON</span>
+        <span class="text-slate-700">/</span>
+        <span id="breadcrumb-view" class="text-white font-medium tracking-tight">Analysis Workspace</span>
       </div>
 
-      <!-- Semantic Telemetry Indicators -->
-      <div class="flex items-center space-x-3 text-xs">
+      <!-- Semantic Telemetry Indicators (Chert Style) -->
+      <div class="flex items-center space-x-2.5 text-xs">
         <!-- Docker Daemon Status Pill -->
-        <div id="telemetry-docker" class="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#111A25] border border-[#263445]">
-          <span class="w-2 h-2 rounded-full bg-emerald-400" id="docker-indicator"></span>
-          <span class="text-[11px] text-[#9AA9BB]">Docker: <strong class="text-[#E8EEF6] font-normal" id="docker-status-text">Checking...</strong></span>
+        <div id="telemetry-docker" class="flex items-center space-x-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] shadow-sm">
+          <span class="relative flex h-2 w-2">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" id="docker-indicator"></span>
+          </span>
+          <span class="text-[11px] text-slate-400 font-mono">Docker: <strong class="text-white font-medium" id="docker-status-text">Checking...</strong></span>
         </div>
 
         <!-- Inference Model Pill -->
-        <div id="telemetry-model" class="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-[#111A25] border border-[#263445]">
-          <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
-          <span class="text-[11px] text-[#9AA9BB]">Model: <strong class="text-[#25B8CE] font-mono font-normal" id="model-status-text">deepseek-v4.1-flash-1017</strong></span>
+        <div id="telemetry-model" class="flex items-center space-x-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] shadow-sm">
+          <span class="w-2 h-2 rounded-full bg-[#00D2FF] shadow-[0_0_8px_#00D2FF]"></span>
+          <span class="text-[11px] text-slate-400 font-mono">Model: <strong class="text-[#00D2FF] font-mono font-medium" id="model-status-text">deepseek-v4.1-flash-1017</strong></span>
         </div>
 
         <!-- Refresh Button -->
         <button onclick="checkHealth(true)" title="Refresh System Health"
-                class="p-1.5 rounded bg-[#111A25] hover:bg-[#151F2B] text-[#9AA9BB] hover:text-[#E8EEF6] border border-[#263445] transition">
+                class="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-400 hover:text-white border border-white/[0.08] transition shadow-sm">
           <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -224,27 +274,32 @@
         <!-- ================================================================= -->
         <section id="view-analysis" class="space-y-6">
 
-          <!-- Section Header -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#263445]">
+          <!-- Section Header (Wondering Canvas Style) -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.07]">
             <div>
-              <h1 class="text-xl font-bold tracking-tight text-[#E8EEF6]">Analysis Workspace</h1>
-              <p class="text-xs text-[#9AA9BB] mt-0.5">
-                Execute autonomous Python data analysis inside disposable, isolated Docker containers on Vultr Cloud.
+              <div class="flex items-center space-x-2">
+                <h1 class="text-xl font-bold tracking-tight text-white">Analysis Workspace</h1>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">Active Session</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                Autonomous data intelligence executed inside disposable, isolated Docker micro-sandboxes with cryptographic execution receipts.
               </p>
             </div>
             <!-- Quick Actions -->
             <div class="flex items-center space-x-2">
-              <span class="text-xs text-[#718198] mr-1 hidden sm:inline">Bundled Datasets:</span>
+              <span class="text-xs text-slate-500 font-mono mr-1 hidden sm:inline text-[11px]">Curated Datasets:</span>
               <button onclick="loadSample('sales_clean')"
-                      class="text-xs font-medium px-2.5 py-1.5 rounded bg-[#111A25] hover:bg-[#151F2B] text-[#E8EEF6] border border-[#263445] transition">
-                Sales (25 rows)
+                      class="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08] transition shadow-sm flex items-center space-x-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#00D2FF]"></span>
+                <span>Sales (25 rows)</span>
               </button>
               <button onclick="loadSample('customer_churn')"
-                      class="text-xs font-medium px-2.5 py-1.5 rounded bg-[#111A25] hover:bg-[#151F2B] text-[#25B8CE] border border-[#263445] transition">
-                Customer Churn
+                      class="text-xs font-medium px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08] transition shadow-sm flex items-center space-x-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Customer Churn</span>
               </button>
               <button onclick="resetAnalysis()" title="Reset Workspace"
-                      class="text-xs font-medium px-2.5 py-1.5 rounded bg-[#111A25] hover:bg-[#151F2B] text-[#718198] hover:text-[#E8EEF6] border border-[#263445] transition">
+                      class="text-xs font-medium px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] text-slate-400 hover:text-white border border-white/[0.06] transition">
                 Reset
               </button>
             </div>
@@ -254,98 +309,121 @@
           <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
 
             <!-- Col 5: Dataset Ingestion & Schema Inspector -->
-            <div class="lg:col-span-5 panel p-4 space-y-3.5 flex flex-col justify-between">
-              <div class="space-y-3">
+            <div class="lg:col-span-5 chert-panel p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-3.5">
                 <div class="flex items-center justify-between">
-                  <h2 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">1. Target Dataset</h2>
-                  <span id="ds-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded badge-pass">Schema Validated</span>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">1. Target Dataset</h2>
+                  </div>
+                  <span id="ds-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded badge-pass font-semibold">Schema Validated</span>
                 </div>
 
                 <!-- Empty state upload dropzone -->
                 <div id="ds-upload-zone"
-                     class="border border-dashed border-[#263445] hover:border-[#25B8CE]/70 bg-[#0A0E15]/60 rounded-md p-4 text-center cursor-pointer transition"
+                     class="border border-dashed border-white/[0.12] hover:border-[#00D2FF]/60 bg-black/40 hover:bg-black/60 rounded-lg p-5 text-center cursor-pointer transition group"
                      onclick="document.getElementById('csv-file-input').click()">
                   <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="handleFileUpload(event)">
-                  <div class="flex flex-col items-center justify-center space-y-1">
-                    <svg class="w-6 h-6 text-[#718198]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                    </svg>
-                    <span class="text-xs font-medium text-[#E8EEF6]">Click or drag CSV to upload</span>
-                    <span class="text-[10px] text-[#718198]">Max 10 MB • Max 100k rows • 200 columns</span>
+                  <div class="flex flex-col items-center justify-center space-y-2">
+                    <div class="w-10 h-10 rounded-full bg-white/[0.04] group-hover:bg-[#00D2FF]/10 border border-white/[0.08] group-hover:border-[#00D2FF]/30 flex items-center justify-center transition">
+                      <svg class="w-5 h-5 text-slate-400 group-hover:text-[#00D2FF] transition" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                    </div>
+                    <div class="space-y-0.5">
+                      <span class="text-xs font-medium text-white block">Drop CSV here or click to browse</span>
+                      <span class="text-[10px] text-slate-500 font-mono block">Max 10 MB • Max 100k rows • 200 columns</span>
+                    </div>
                   </div>
                 </div>
 
                 <!-- Loaded Dataset Summary Card (Hidden until loaded) -->
-                <div id="dataset-preview-container" class="hidden space-y-2.5">
-                  <div class="p-2.5 rounded bg-[#0A0E15] border border-[#263445] text-xs space-y-1">
+                <div id="dataset-preview-container" class="hidden space-y-3">
+                  <div class="p-3 rounded-lg chert-well text-xs space-y-1.5">
                     <div class="flex items-center justify-between">
-                      <span class="text-[#718198]">File:</span>
-                      <span id="ds-filename" class="font-medium text-[#E8EEF6]"></span>
+                      <span class="text-slate-400 font-medium">Filename</span>
+                      <span id="ds-filename" class="font-medium text-white font-mono"></span>
                     </div>
                     <div class="flex items-center justify-between">
-                      <span class="text-[#718198]">Dimensions:</span>
-                      <span class="text-[#E8EEF6]"><span id="ds-rows" class="font-mono"></span> rows × <span id="ds-cols" class="font-mono"></span> cols</span>
+                      <span class="text-slate-400 font-medium">Dimensions</span>
+                      <span class="text-white"><span id="ds-rows" class="font-mono font-semibold text-[#00D2FF]"></span> rows × <span id="ds-cols" class="font-mono font-semibold text-[#00D2FF]"></span> cols</span>
                     </div>
                     <div class="flex items-center justify-between">
-                      <span class="text-[#718198]">SHA-256:</span>
-                      <span id="ds-hash" class="font-mono text-[10px] text-[#25B8CE]"></span>
+                      <span class="text-slate-400 font-medium">SHA-256 Digest</span>
+                      <span id="ds-hash" class="font-mono text-[10px] text-[#00D2FF] bg-[#00D2FF]/10 px-1.5 py-0.5 rounded border border-[#00D2FF]/20"></span>
                     </div>
                   </div>
 
                   <!-- Schema preview table -->
-                  <div class="border border-[#263445] rounded overflow-x-auto max-h-40 text-[11px]">
-                    <table id="preview-table" class="min-w-full text-left text-[#E8EEF6]"></table>
+                  <div class="border border-white/[0.08] rounded-lg overflow-x-auto max-h-44 text-[11px] chert-well">
+                    <table id="preview-table" class="min-w-full text-left text-white"></table>
                   </div>
                 </div>
               </div>
 
               <!-- Replace Action -->
-              <div id="ds-replace-bar" class="hidden pt-2 border-t border-[#263445] flex items-center justify-between text-xs">
-                <span class="text-[11px] text-[#718198]">Untrusted data sanitization applied</span>
-                <button onclick="document.getElementById('csv-file-input').click()" class="text-[#25B8CE] hover:underline text-[11px]">
-                  Change File
+              <div id="ds-replace-bar" class="hidden pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-1.5 text-slate-400 text-[11px]">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  <span>Untrusted CSV sanitization applied</span>
+                </div>
+                <button onclick="document.getElementById('csv-file-input').click()" class="text-[#00D2FF] hover:underline text-[11px] font-mono">
+                  Change File ➔
                 </button>
               </div>
             </div>
 
             <!-- Col 7: Analysis Objective & Dispatch -->
-            <div class="lg:col-span-7 panel p-4 space-y-3.5 flex flex-col justify-between">
-              <div class="space-y-3">
+            <div class="lg:col-span-7 chert-panel p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-3.5">
                 <div class="flex items-center justify-between">
-                  <h2 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">2. Natural-Language Objective</h2>
-                  <span class="text-[10px] text-[#718198] mono">Max 2,000 characters</span>
+                  <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300">2. Natural-Language Objective</h2>
+                  </div>
+                  <span class="text-[10px] text-slate-500 font-mono">Max 2,000 chars</span>
                 </div>
 
-                <textarea id="question-input" rows="4"
-                          placeholder="State the analytical question (e.g. Which product category generated the highest total revenue? Calculate total revenue for every category, rank the categories, and generate a bar chart.)"
-                          class="w-full bg-[#0A0E15] border border-[#263445] rounded-md p-3 text-xs text-[#E8EEF6] placeholder-[#718198] focus:outline-none focus:border-[#25B8CE] transition resize-none"></textarea>
+                <div class="relative">
+                  <textarea id="question-input" rows="4"
+                            placeholder="State the analytical question (e.g. Which product category generated the highest total revenue? Calculate total revenue for every category, rank the categories, and generate a bar chart.)"
+                            class="w-full chert-well rounded-lg p-3.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#00D2FF] focus:border-[#00D2FF] transition resize-none leading-relaxed"></textarea>
+                </div>
 
-                <!-- Prompt suggestion chips -->
-                <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
-                  <span class="text-[#718198] text-[10px] uppercase font-mono mr-1">Prompts:</span>
-                  <button onclick="setQuestion('Which product category generated the highest total revenue? Calculate total revenue for every category, rank the categories, and generate a bar chart.')"
-                          class="px-2 py-1 rounded bg-[#0A0E15] hover:bg-[#151F2B] text-[#9AA9BB] hover:text-[#E8EEF6] border border-[#263445] transition">
-                    Category Revenue Ranking
-                  </button>
-                  <button onclick="setQuestion('Identify the top 5 highest-selling products by total revenue and plot their comparison.')"
-                          class="px-2 py-1 rounded bg-[#0A0E15] hover:bg-[#151F2B] text-[#9AA9BB] hover:text-[#E8EEF6] border border-[#263445] transition">
-                    Top 5 Products
-                  </button>
-                  <button onclick="setQuestion('Analyze customer churn rate across contract types and visualize the distribution.')"
-                          class="px-2 py-1 rounded bg-[#0A0E15] hover:bg-[#151F2B] text-[#9AA9BB] hover:text-[#E8EEF6] border border-[#263445] transition">
-                    Churn by Contract
-                  </button>
+                <!-- Wondering-Style Prompt Suggestion Chips -->
+                <div class="space-y-1.5">
+                  <span class="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">Suggested Objectives:</span>
+                  <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <button onclick="setQuestion('Which product category generated the highest total revenue? Calculate total revenue for every category, rank the categories, and generate a bar chart.')"
+                            class="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.06] hover:border-[#00D2FF]/40 transition text-left flex items-center space-x-1.5 shadow-sm">
+                      <span class="text-[#00D2FF] font-mono text-[10px]">#1</span>
+                      <span>Category Revenue Ranking</span>
+                    </button>
+                    <button onclick="setQuestion('Identify the top 5 highest-selling products by total revenue and plot their comparison.')"
+                            class="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.06] hover:border-[#00D2FF]/40 transition text-left flex items-center space-x-1.5 shadow-sm">
+                      <span class="text-emerald-400 font-mono text-[10px]">#2</span>
+                      <span>Top 5 Products</span>
+                    </button>
+                    <button onclick="setQuestion('Analyze customer churn rate across contract types and visualize the distribution.')"
+                            class="px-2.5 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 hover:text-white border border-white/[0.06] hover:border-[#00D2FF]/40 transition text-left flex items-center space-x-1.5 shadow-sm">
+                      <span class="text-amber-400 font-mono text-[10px]">#3</span>
+                      <span>Churn by Contract</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
               <!-- Dispatch Button and Ready State -->
-              <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <div class="text-xs text-[#718198] flex items-center space-x-2">
-                  <span class="w-1.5 h-1.5 rounded-full bg-[#25B8CE]" id="ready-dot"></span>
-                  <span id="ready-status-text">Awaiting input</span>
+              <div class="pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
+                <div class="text-xs text-slate-400 flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-slate-500" id="ready-dot"></span>
+                  <span id="ready-status-text" class="font-medium text-slate-400">Awaiting input</span>
                 </div>
                 <button id="run-btn" onclick="startAnalysis()" disabled
-                        class="px-4 py-2 rounded-md bg-[#25B8CE] hover:bg-[#209fb3] disabled:opacity-40 disabled:cursor-not-allowed text-black font-semibold text-xs transition flex items-center space-x-1.5 shadow-sm">
+                        class="btn-gradient px-5 py-2 rounded-lg disabled:opacity-30 disabled:cursor-not-allowed text-black font-semibold text-xs transition flex items-center space-x-2">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  </svg>
                   <span>Execute Analysis</span>
                 </button>
               </div>
@@ -354,142 +432,160 @@
           </div>
 
           <!-- =============================================================== -->
-          <!-- EXECUTION MONITOR (Real Backend Lifecycle Stepper)              -->
+          <!-- EXECUTION MONITOR (Chert Stepper & Lifecycle Progress)          -->
           <!-- =============================================================== -->
-          <div id="execution-monitor" class="hidden panel p-4 space-y-3">
+          <div id="execution-monitor" class="hidden chert-panel p-5 space-y-4">
             <div class="flex items-center justify-between text-xs">
-              <div class="flex items-center space-x-2">
-                <span class="animate-spin text-[#25B8CE]" id="exec-spinner">⚡</span>
-                <span class="text-[#9AA9BB]">Active Execution: <strong class="text-[#E8EEF6] mono uppercase" id="exec-status-label">PENDING</strong></span>
-                <span id="exec-model-badge" class="hidden text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700"></span>
+              <div class="flex items-center space-x-2.5">
+                <span class="relative flex h-2.5 w-2.5">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00D2FF] opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#00D2FF]"></span>
+                </span>
+                <span class="text-slate-400">Active Execution: <strong class="text-white mono uppercase font-semibold" id="exec-status-label">PENDING</strong></span>
+                <span id="exec-model-badge" class="hidden text-[10px] font-mono px-2 py-0.5 rounded bg-[#00D2FF]/10 text-[#00D2FF] border border-[#00D2FF]/20 font-semibold"></span>
               </div>
-              <div class="text-[11px] font-mono text-[#718198]" id="exec-task-id"></div>
+              <div class="text-[11px] font-mono text-slate-500" id="exec-task-id"></div>
             </div>
 
             <!-- Stepper Timeline -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2 pt-1 text-xs font-medium">
-              <div id="step-planning" class="p-2 rounded bg-[#0A0E15] border border-[#263445] flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="dot-planning"></span>
-                <span class="text-[#9AA9BB]">1. Planning</span>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-2.5 pt-1 text-xs font-medium">
+              <div id="step-planning" class="p-2.5 rounded-lg chert-well flex items-center space-x-2.5 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700" id="dot-planning"></span>
+                <span class="text-slate-300 text-[11px]">1. Planning</span>
               </div>
-              <div id="step-generating" class="p-2 rounded bg-[#0A0E15] border border-[#263445] flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="dot-generating"></span>
-                <span class="text-[#9AA9BB]">2. Code Gen (AST)</span>
+              <div id="step-generating" class="p-2.5 rounded-lg chert-well flex items-center space-x-2.5 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700" id="dot-generating"></span>
+                <span class="text-slate-300 text-[11px]">2. Code Gen (AST)</span>
               </div>
-              <div id="step-running" class="p-2 rounded bg-[#0A0E15] border border-[#263445] flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="dot-running"></span>
-                <span class="text-[#9AA9BB]">3. Docker Sandbox</span>
+              <div id="step-running" class="p-2.5 rounded-lg chert-well flex items-center space-x-2.5 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700" id="dot-running"></span>
+                <span class="text-slate-300 text-[11px]">3. Docker Sandbox</span>
               </div>
-              <div id="step-explaining" class="p-2 rounded bg-[#0A0E15] border border-[#263445] flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="dot-explaining"></span>
-                <span class="text-[#9AA9BB]">4. Explanation</span>
+              <div id="step-explaining" class="p-2.5 rounded-lg chert-well flex items-center space-x-2.5 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700" id="dot-explaining"></span>
+                <span class="text-slate-300 text-[11px]">4. Explanation</span>
               </div>
-              <div id="step-completed" class="p-2 rounded bg-[#0A0E15] border border-[#263445] flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-slate-600" id="dot-completed"></span>
-                <span class="text-[#9AA9BB]">5. Receipt Sealed</span>
+              <div id="step-completed" class="p-2.5 rounded-lg chert-well flex items-center space-x-2.5 transition">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-700" id="dot-completed"></span>
+                <span class="text-slate-300 text-[11px]">5. Receipt Sealed</span>
               </div>
             </div>
           </div>
 
           <!-- =============================================================== -->
-          <!-- STRUCTURED RESULTS WORKSPACE (Tabbed & Dense)                    -->
+          <!-- STRUCTURED RESULTS WORKSPACE (Chert High-Density Tabs)          -->
           <!-- =============================================================== -->
           <div id="results-workspace" class="hidden space-y-4">
 
             <!-- Result Tab Navigation Bar -->
-            <div class="flex items-center justify-between border-b border-[#263445] pb-2 text-xs">
-              <div class="flex space-x-1">
+            <div class="flex items-center justify-between border-b border-white/[0.07] pb-2 text-xs">
+              <div class="flex space-x-1 p-1 bg-black/40 rounded-lg border border-white/[0.06]">
                 <button onclick="switchResultTab('overview')" id="rtab-overview"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#25B8CE] bg-[#151F2B] border border-[#263445] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-[#00D2FF] bg-white/[0.08] shadow-sm transition">
                   Overview & Findings
                 </button>
                 <button onclick="switchResultTab('visualization')" id="rtab-visualization"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition">
                   Visualization
                 </button>
                 <button onclick="switchResultTab('containment')" id="rtab-containment"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition">
                   Containment Card
                 </button>
                 <button onclick="switchResultTab('artifacts')" id="rtab-artifacts"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition">
                   Artifacts (<span id="rtab-art-count">0</span>)
                 </button>
                 <button onclick="switchResultTab('code')" id="rtab-code"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition">
                   Code & Logs
                 </button>
                 <button onclick="switchResultTab('receipt')" id="rtab-receipt"
-                        class="px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition">
+                        class="px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition">
                   Execution Receipt
                 </button>
               </div>
 
               <!-- Quick Download Link -->
               <a id="receipt-download-btn" href="#" target="_blank"
-                 class="px-2.5 py-1 rounded bg-[#111A25] hover:bg-[#151F2B] text-[#25B8CE] border border-[#263445] font-mono text-[11px] transition">
-                Export Receipt JSON
+                 class="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#00D2FF] border border-white/[0.08] font-mono text-[11px] transition shadow-sm flex items-center space-x-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>Export Receipt JSON</span>
               </a>
             </div>
 
             <!-- Tab 1: Overview & Findings -->
             <div id="pane-overview" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-              <div class="lg:col-span-8 panel p-5 space-y-3">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Executive Analysis Findings</h3>
-                <div id="explanation-content" class="text-xs text-[#E8EEF6] space-y-2 leading-relaxed"></div>
+              <div class="lg:col-span-8 chert-panel p-6 space-y-4">
+                <div class="flex items-center space-x-2 border-b border-white/[0.06] pb-3">
+                  <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Executive Analysis Findings</h3>
+                </div>
+                <div id="explanation-content" class="text-xs text-slate-200 space-y-3 leading-relaxed"></div>
               </div>
-              <div class="lg:col-span-4 panel p-5 space-y-3 flex flex-col justify-between">
+              <div class="lg:col-span-4 chert-panel p-6 space-y-4 flex flex-col justify-between">
                 <div class="space-y-3">
-                  <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Chart Snapshot</h3>
-                  <div id="overview-chart-preview" class="flex items-center justify-center min-h-[160px] bg-[#0A0E15] rounded border border-[#263445] p-2">
-                    <p class="text-[11px] text-[#718198]">No visualization available</p>
+                  <div class="flex items-center space-x-2 border-b border-white/[0.06] pb-3">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Chart Snapshot</h3>
+                  </div>
+                  <div id="overview-chart-preview" class="flex items-center justify-center min-h-[180px] chert-well rounded-lg p-2 overflow-hidden">
+                    <p class="text-[11px] text-slate-500 font-mono">No visualization available</p>
                   </div>
                 </div>
-                <button onclick="switchResultTab('visualization')" class="w-full text-center py-1.5 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-xs text-[#25B8CE] border border-[#263445] transition">
-                  Open Full Visualization
+                <button onclick="switchResultTab('visualization')" class="w-full text-center py-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-xs text-[#00D2FF] border border-white/[0.08] transition shadow-sm font-medium">
+                  Open Full Visualization ➔
                 </button>
               </div>
             </div>
 
             <!-- Tab 2: Full Visualization View -->
-            <div id="pane-visualization" class="hidden panel p-5 space-y-4">
-              <div class="flex items-center justify-between pb-2 border-b border-[#263445]">
-                <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">High-Resolution Analysis Chart</h3>
-                <span class="text-[11px] font-mono text-[#718198]">chart.png</span>
+            <div id="pane-visualization" class="hidden chert-panel p-6 space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+                <div class="flex items-center space-x-2">
+                  <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">High-Resolution Analysis Chart</h3>
+                </div>
+                <span class="text-[11px] font-mono text-slate-500 bg-black/40 px-2 py-0.5 rounded border border-white/[0.06]">chart.png</span>
               </div>
-              <div id="full-chart-container" class="flex justify-center items-center py-4 bg-[#0A0E15] rounded border border-[#263445]">
-                <p class="text-xs text-[#718198]">No chart generated for this analysis.</p>
+              <div id="full-chart-container" class="flex justify-center items-center py-6 chert-well rounded-lg">
+                <p class="text-xs text-slate-500 font-mono">No chart generated for this analysis.</p>
               </div>
             </div>
 
             <!-- Tab 3: Containment Card (Observed Docker Metadata) -->
-            <div id="pane-containment" class="hidden panel p-5 space-y-3.5 border-l-4 border-l-[#25B8CE]">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-[#263445]">
+            <div id="pane-containment" class="hidden chert-panel p-6 space-y-4 border-l-4 border-l-[#00D2FF]">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/[0.06]">
                 <div>
-                  <h3 class="text-sm font-semibold text-[#E8EEF6]">Containment Card</h3>
-                  <p class="text-[11px] text-[#9AA9BB]">Observed Linux cgroups and container inspection attributes captured directly by trusted controller.</p>
+                  <h3 class="text-sm font-semibold text-white">Containment Card</h3>
+                  <p class="text-[11px] text-slate-400">Observed Linux cgroups and container inspection attributes captured directly by trusted controller.</p>
                 </div>
-                <span class="badge-cyan px-2 py-0.5 rounded text-[10px] font-mono self-start sm:self-auto">Live Docker Inspect</span>
+                <span class="badge-cyan px-2.5 py-1 rounded-md text-[10px] font-mono self-start sm:self-auto font-semibold">Live Docker Inspect</span>
               </div>
               <!-- 8 Controls Grid -->
-              <div id="containment-grid" class="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs"></div>
+              <div id="containment-grid" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs"></div>
             </div>
 
             <!-- Tab 4: Artifacts File Table -->
-            <div id="pane-artifacts" class="hidden panel p-5 space-y-3">
-              <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Extracted Container Artifacts</h3>
-              <div class="border border-[#263445] rounded overflow-hidden text-xs">
+            <div id="pane-artifacts" class="hidden chert-panel p-6 space-y-4">
+              <div class="flex items-center space-x-2 border-b border-white/[0.06] pb-3">
+                <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Extracted Container Artifacts</h3>
+              </div>
+              <div class="border border-white/[0.08] rounded-lg overflow-hidden text-xs chert-well">
                 <table class="min-w-full text-left">
-                  <thead class="bg-[#0A0E15] text-[#9AA9BB] font-mono text-[11px] border-b border-[#263445]">
+                  <thead class="bg-black/60 text-slate-400 font-mono text-[11px] border-b border-white/[0.06]">
                     <tr>
-                      <th class="p-2.5">Filename</th>
-                      <th class="p-2.5">MIME Type</th>
-                      <th class="p-2.5">Size</th>
-                      <th class="p-2.5">SHA-256 Digest</th>
-                      <th class="p-2.5 text-right">Action</th>
+                      <th class="p-3">Filename</th>
+                      <th class="p-3">MIME Type</th>
+                      <th class="p-3">Size</th>
+                      <th class="p-3">SHA-256 Digest</th>
+                      <th class="p-3 text-right">Action</th>
                     </tr>
                   </thead>
-                  <tbody id="artifacts-table-body" class="divide-y divide-[#263445]/60 text-[11px]"></tbody>
+                  <tbody id="artifacts-table-body" class="divide-y divide-white/[0.04] text-[11px]"></tbody>
                 </table>
               </div>
             </div>
@@ -497,42 +593,45 @@
             <!-- Tab 5: Code & Execution Logs -->
             <div id="pane-code" class="hidden space-y-4">
               <!-- Plan & Code -->
-              <div class="panel p-5 space-y-3">
-                <div class="flex items-center justify-between border-b border-[#263445] pb-2">
-                  <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Generated Python Script (AST Validated)</h3>
-                  <button onclick="copyCode()" class="text-xs text-[#25B8CE] hover:underline font-mono">Copy Code</button>
+              <div class="chert-panel p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
+                  <div class="flex items-center space-x-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Generated Python Script (AST Validated)</h3>
+                  </div>
+                  <button onclick="copyCode()" class="text-xs text-[#00D2FF] hover:underline font-mono">Copy Code</button>
                 </div>
-                <pre id="code-content" class="bg-[#0A0E15] p-3.5 rounded text-xs mono text-[#34D399] overflow-x-auto max-h-80 border border-[#263445] leading-relaxed"></pre>
+                <pre id="code-content" class="chert-well p-4 rounded-lg text-xs mono text-emerald-400 overflow-x-auto max-h-80 leading-relaxed"></pre>
               </div>
 
               <!-- Stdout / Stderr -->
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div class="panel p-4 space-y-2">
-                  <h4 class="text-[11px] font-mono uppercase text-[#718198]">Container Stdout (256 KB Cap)</h4>
-                  <pre id="stdout-content" class="bg-[#0A0E15] p-3 rounded text-[11px] mono text-[#E8EEF6] overflow-x-auto max-h-48 border border-[#263445]"></pre>
+                <div class="chert-panel p-5 space-y-3">
+                  <h4 class="text-[11px] font-mono uppercase text-slate-400">Container Stdout (256 KB Cap)</h4>
+                  <pre id="stdout-content" class="chert-well p-3.5 rounded-lg text-[11px] mono text-slate-300 overflow-x-auto max-h-48 leading-relaxed"></pre>
                 </div>
-                <div class="panel p-4 space-y-2">
-                  <h4 class="text-[11px] font-mono uppercase text-[#718198]">Container Stderr</h4>
-                  <pre id="stderr-content" class="bg-[#0A0E15] p-3 rounded text-[11px] mono text-[#F87171] overflow-x-auto max-h-48 border border-[#263445]"></pre>
+                <div class="chert-panel p-5 space-y-3">
+                  <h4 class="text-[11px] font-mono uppercase text-slate-400">Container Stderr</h4>
+                  <pre id="stderr-content" class="chert-well p-3.5 rounded-lg text-[11px] mono text-rose-400 overflow-x-auto max-h-48 leading-relaxed"></pre>
                 </div>
               </div>
             </div>
 
             <!-- Tab 6: Execution Receipt -->
-            <div id="pane-receipt" class="hidden panel p-5 space-y-3">
-              <div class="flex items-center justify-between pb-2 border-b border-[#263445]">
+            <div id="pane-receipt" class="hidden chert-panel p-6 space-y-4">
+              <div class="flex items-center justify-between pb-3 border-b border-white/[0.06]">
                 <div class="space-y-0.5">
-                  <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Tamper-Evident Execution Receipt</h3>
-                  <p class="text-[11px] text-[#718198]">Canonical SHA-256 digest covering inputs, AST-verified code, inspect evidence, and artifact outputs.</p>
+                  <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Tamper-Evident Execution Receipt</h3>
+                  <p class="text-[11px] text-slate-500">Canonical SHA-256 digest covering inputs, AST-verified code, inspect evidence, and artifact outputs.</p>
                 </div>
                 <div class="flex items-center space-x-2">
-                  <span id="receipt-hash-pill" class="text-[11px] font-mono px-2 py-1 rounded bg-[#0A0E15] text-[#25B8CE] border border-[#263445]"></span>
-                  <button onclick="copyReceiptHash()" class="text-xs text-[#9AA9BB] hover:text-[#E8EEF6] px-2 py-1 rounded bg-[#151F2B] border border-[#263445]">
+                  <span id="receipt-hash-pill" class="text-[11px] font-mono px-2.5 py-1 rounded-md bg-black/50 text-[#00D2FF] border border-white/[0.08]"></span>
+                  <button onclick="copyReceiptHash()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1 rounded-md bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] transition">
                     Copy Hash
                   </button>
                 </div>
               </div>
-              <pre id="receipt-json-preview" class="bg-[#0A0E15] p-4 rounded text-[11px] mono text-[#9AA9BB] overflow-x-auto max-h-96 border border-[#263445] leading-relaxed"></pre>
+              <pre id="receipt-json-preview" class="chert-well p-4 rounded-lg text-[11px] mono text-slate-400 overflow-x-auto max-h-96 leading-relaxed"></pre>
             </div>
 
           </div>
@@ -540,27 +639,29 @@
         </section>
 
         <!-- ================================================================= -->
-        <!-- VIEW 2: RED TEAM ARENA (Security Testing Console)                 -->
+        <!-- VIEW 2: RED TEAM ARENA (Chert Cyber Defense Terminal)             -->
         <!-- ================================================================= -->
         <section id="view-redteam" class="hidden space-y-6">
 
           <!-- Header & Token Lock Status -->
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-[#263445]">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.07]">
             <div>
-              <div class="flex items-center space-x-2">
-                <h1 class="text-xl font-bold tracking-tight text-[#E8EEF6]">Security Testing / Red Team Arena</h1>
-                <span id="redteam-status-badge" class="badge-neutral text-[10px] font-mono px-2 py-0.5 rounded">Disabled by Default</span>
+              <div class="flex items-center space-x-2.5">
+                <h1 class="text-xl font-bold tracking-tight text-white">Security Testing / Red Team Arena</h1>
+                <span id="redteam-status-badge" class="badge-neutral text-[10px] font-mono px-2.5 py-0.5 rounded font-semibold">Disabled by Default</span>
               </div>
-              <p class="text-xs text-[#9AA9BB] mt-0.5">
-                Active boundary validation against disposable Docker containers with controller-side evidence.
+              <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+                Active boundary containment validation against disposable Docker containers with cryptographic controller-side evidence.
               </p>
             </div>
 
             <!-- Credential / Token Unlock Input -->
             <div class="flex items-center space-x-2">
-              <span class="text-xs text-[#718198] mono">Token:</span>
-              <input type="password" id="redteam-token-input" placeholder="Enter authorization token..."
-                     class="bg-[#0A0E15] border border-[#263445] rounded px-3 py-1.5 text-xs mono text-[#E8EEF6] placeholder-[#718198] focus:outline-none focus:border-[#25B8CE] w-48 transition">
+              <span class="text-xs text-slate-400 font-mono">Token:</span>
+              <div class="relative">
+                <input type="password" id="redteam-token-input" placeholder="Enter authorization token..."
+                       class="chert-well rounded-lg px-3 py-1.5 text-xs mono text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-[#00D2FF] focus:border-[#00D2FF] w-52 transition">
+              </div>
             </div>
           </div>
 
@@ -568,66 +669,66 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 
             <!-- Probe 1: Network Isolation -->
-            <div class="panel p-4 space-y-3 flex flex-col justify-between">
-              <div class="space-y-2">
+            <div class="chert-panel chert-panel-interactive p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-2.5">
                 <div class="flex items-center justify-between text-xs">
-                  <span class="text-[10px] font-mono text-[#25B8CE] px-1.5 py-0.2 rounded bg-[#25B8CE]/10 border border-[#25B8CE]/25">PROBE-01</span>
-                  <span class="text-[10px] font-mono text-[#718198]">Target: --network none</span>
+                  <span class="text-[10px] font-mono text-[#00D2FF] px-2 py-0.5 rounded bg-[#00D2FF]/10 border border-[#00D2FF]/20 font-semibold">PROBE-01</span>
+                  <span class="text-[10px] font-mono text-slate-500">Target: --network none</span>
                 </div>
-                <h3 class="text-sm font-semibold text-[#E8EEF6]">Outbound Network Exfiltration</h3>
-                <p class="text-xs text-[#9AA9BB] leading-relaxed">
-                  Verifies complete network namespace isolation by testing egress blocking, internal canary name resolution, and interface restriction under --network none.
+                <h3 class="text-sm font-semibold text-white">Outbound Network Exfiltration</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Verifies complete network namespace isolation by testing egress blocking, internal canary name resolution, and interface restriction under <code class="font-mono text-[#00D2FF]">--network none</code>.
                 </p>
               </div>
 
-              <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-network_isolation" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+              <div class="pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
+                <span id="probe-status-network_isolation" class="text-[11px] font-mono text-slate-500">Disabled</span>
                 <button onclick="runRedTeamProbe('network_isolation')" id="btn-probe-network_isolation" disabled title="Red Team Arena is disabled by default via server configuration"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
+                        class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/[0.04] text-slate-500 border border-white/[0.08] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
             </div>
 
             <!-- Probe 2: Host Secret Isolation -->
-            <div class="panel p-4 space-y-3 flex flex-col justify-between">
-              <div class="space-y-2">
+            <div class="chert-panel chert-panel-interactive p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-2.5">
                 <div class="flex items-center justify-between text-xs">
-                  <span class="text-[10px] font-mono text-[#34D399] px-1.5 py-0.2 rounded bg-[#34D399]/10 border border-[#34D399]/25">PROBE-02</span>
-                  <span class="text-[10px] font-mono text-[#718198]">Target: Env & UID 10001</span>
+                  <span class="text-[10px] font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 font-semibold">PROBE-02</span>
+                  <span class="text-[10px] font-mono text-slate-500">Target: Env & UID 10001</span>
                 </div>
-                <h3 class="text-sm font-semibold text-[#E8EEF6]">Host Secret & Env Exfiltration</h3>
-                <p class="text-xs text-[#9AA9BB] leading-relaxed">
-                  Scans container environment variables and sensitive host directories (/root, /etc/shadow, /etc/auron) for credentials and API keys.
+                <h3 class="text-sm font-semibold text-white">Host Secret & Env Exfiltration</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Scans container environment variables and sensitive host directories (<code class="font-mono text-emerald-400">/root</code>, <code class="font-mono text-emerald-400">/etc/shadow</code>, <code class="font-mono text-emerald-400">/etc/auron</code>) for credentials and host API keys.
                 </p>
               </div>
 
-              <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-secret_isolation" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+              <div class="pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
+                <span id="probe-status-secret_isolation" class="text-[11px] font-mono text-slate-500">Disabled</span>
                 <button onclick="runRedTeamProbe('secret_isolation')" id="btn-probe-secret_isolation" disabled title="Red Team Arena is disabled by default via server configuration"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
+                        class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/[0.04] text-slate-500 border border-white/[0.08] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
             </div>
 
             <!-- Probe 3: Process Fork Bomb -->
-            <div class="panel p-4 space-y-3 flex flex-col justify-between">
-              <div class="space-y-2">
+            <div class="chert-panel chert-panel-interactive p-5 space-y-4 flex flex-col justify-between">
+              <div class="space-y-2.5">
                 <div class="flex items-center justify-between text-xs">
-                  <span class="text-[10px] font-mono text-[#FBBF24] px-1.5 py-0.2 rounded bg-[#FBBF24]/10 border border-[#FBBF24]/25">PROBE-03</span>
-                  <span class="text-[10px] font-mono text-[#718198]">Target: --pids-limit 64</span>
+                  <span class="text-[10px] font-mono text-amber-400 px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 font-semibold">PROBE-03</span>
+                  <span class="text-[10px] font-mono text-slate-500">Target: --pids-limit 64</span>
                 </div>
-                <h3 class="text-sm font-semibold text-[#E8EEF6]">Process Table Fork Bomb</h3>
-                <p class="text-xs text-[#9AA9BB] leading-relaxed">
-                  Spawns recursive child processes to attempt host process table exhaustion beyond the Linux kernel cgroups PID ceiling.
+                <h3 class="text-sm font-semibold text-white">Process Table Fork Bomb</h3>
+                <p class="text-xs text-slate-400 leading-relaxed">
+                  Spawns recursive child processes to attempt host process table exhaustion beyond the Linux kernel cgroups PID ceiling (<code class="font-mono text-amber-400">pids.max = 64</code>).
                 </p>
               </div>
 
-              <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-pid_limit" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+              <div class="pt-3.5 border-t border-white/[0.06] flex items-center justify-between">
+                <span id="probe-status-pid_limit" class="text-[11px] font-mono text-slate-500">Disabled</span>
                 <button onclick="runRedTeamProbe('pid_limit')" id="btn-probe-pid_limit" disabled title="Red Team Arena is disabled by default via server configuration"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
+                        class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/[0.04] text-slate-500 border border-white/[0.08] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
@@ -636,39 +737,42 @@
           </div>
 
           <!-- Controller Evidence Console -->
-          <div class="panel p-4 space-y-2.5">
-            <div class="flex items-center justify-between border-b border-[#263445] pb-2 text-xs">
+          <div class="chert-panel p-5 space-y-3">
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-3 text-xs">
               <div class="flex items-center space-x-2">
-                <span class="w-2 h-2 rounded-full bg-[#25B8CE]"></span>
-                <span class="font-semibold uppercase tracking-wider text-[#9AA9BB]">Controller Evidence Timeline</span>
+                <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+                <span class="font-semibold uppercase tracking-wider text-slate-300">Controller Evidence Timeline</span>
               </div>
-              <span id="probe-active-label" class="text-[11px] font-mono text-[#718198]">Idle</span>
+              <span id="probe-active-label" class="text-[11px] font-mono text-slate-500">Idle</span>
             </div>
-            <pre id="redteam-console" class="bg-[#0A0E15] p-3.5 rounded text-xs mono text-[#9AA9BB] overflow-x-auto max-h-60 border border-[#263445] leading-relaxed">
+            <pre id="redteam-console" class="chert-well p-4 rounded-lg text-xs mono text-slate-400 overflow-x-auto max-h-60 leading-relaxed">
 Ready for probe execution. Click "Launch Probe" above to test active boundary containment.
             </pre>
           </div>
 
           <!-- Audit History Data Table -->
-          <div class="panel p-4 space-y-3">
-            <div class="flex items-center justify-between border-b border-[#263445] pb-2">
-              <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Red Team Audit Log</h3>
-              <button onclick="refreshRedTeamRuns()" class="text-xs text-[#25B8CE] hover:underline font-mono">Refresh Log</button>
+          <div class="chert-panel p-5 space-y-3">
+            <div class="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <div class="flex items-center space-x-2">
+                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Red Team Audit Log</h3>
+              </div>
+              <button onclick="refreshRedTeamRuns()" class="text-xs text-[#00D2FF] hover:underline font-mono">Refresh Log</button>
             </div>
-            <div class="border border-[#263445] rounded overflow-hidden text-xs">
+            <div class="border border-white/[0.08] rounded-lg overflow-hidden text-xs chert-well">
               <table class="min-w-full text-left">
-                <thead class="bg-[#0A0E15] text-[#9AA9BB] font-mono text-[11px] border-b border-[#263445]">
+                <thead class="bg-black/60 text-slate-400 font-mono text-[11px] border-b border-white/[0.06]">
                   <tr>
-                    <th class="p-2.5">Timestamp</th>
-                    <th class="p-2.5">Probe Name</th>
-                    <th class="p-2.5">Target Mechanism</th>
-                    <th class="p-2.5">Classification</th>
-                    <th class="p-2.5">Duration</th>
-                    <th class="p-2.5">Observed Controller Evidence</th>
+                    <th class="p-3">Timestamp</th>
+                    <th class="p-3">Probe Name</th>
+                    <th class="p-3">Target Mechanism</th>
+                    <th class="p-3">Classification</th>
+                    <th class="p-3">Duration</th>
+                    <th class="p-3">Observed Controller Evidence</th>
                   </tr>
                 </thead>
-                <tbody id="redteam-history-body" class="divide-y divide-[#263445]/60 text-[11px]">
-                  <tr><td colspan="6" class="p-3 text-center text-[#718198]">Loading audit records...</td></tr>
+                <tbody id="redteam-history-body" class="divide-y divide-white/[0.04] text-[11px]">
+                  <tr><td colspan="6" class="p-4 text-center text-slate-500 font-mono">Loading audit records...</td></tr>
                 </tbody>
               </table>
             </div>
@@ -682,53 +786,53 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         <section id="view-gallery" class="hidden space-y-6">
 
           <!-- Header -->
-          <div class="pb-2 border-b border-[#263445]">
-            <h1 class="text-xl font-bold tracking-tight text-[#E8EEF6]">Execution History & Sample Runs</h1>
-            <p class="text-xs text-[#9AA9BB] mt-0.5">
+          <div class="pb-3 border-b border-white/[0.07]">
+            <h1 class="text-xl font-bold tracking-tight text-white">Execution History & Sample Runs</h1>
+            <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
               Verified historical executions with tamper-evident SHA-256 receipts, charts, and plans for instant demonstration inspection.
             </p>
           </div>
 
           <!-- Structured Runs Table -->
-          <div class="panel overflow-hidden text-xs">
+          <div class="chert-panel overflow-hidden text-xs">
             <table class="min-w-full text-left">
-              <thead class="bg-[#0A0E15] text-[#9AA9BB] font-mono text-[11px] border-b border-[#263445]">
+              <thead class="bg-black/60 text-slate-400 font-mono text-[11px] border-b border-white/[0.06]">
                 <tr>
-                  <th class="p-3">Dataset</th>
-                  <th class="p-3">Analysis Objective</th>
-                  <th class="p-3">Model</th>
-                  <th class="p-3">Status</th>
-                  <th class="p-3">Artifacts</th>
-                  <th class="p-3">Receipt SHA-256</th>
-                  <th class="p-3 text-right">Action</th>
+                  <th class="p-3.5">Dataset</th>
+                  <th class="p-3.5">Analysis Objective</th>
+                  <th class="p-3.5">Model</th>
+                  <th class="p-3.5">Status</th>
+                  <th class="p-3.5">Artifacts</th>
+                  <th class="p-3.5">Receipt SHA-256</th>
+                  <th class="p-3.5 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-[#263445]/60 text-[11px]">
+              <tbody class="divide-y divide-white/[0.04] text-[11px]">
                 <!-- Golden Run 1: Sales -->
-                <tr class="hover:bg-[#151F2B]/50 transition">
-                  <td class="p-3 font-medium text-[#E8EEF6] mono">sales_clean.csv</td>
-                  <td class="p-3 text-[#9AA9BB] max-w-xs truncate">Which category generated the highest revenue? Rank categories & plot chart.</td>
-                  <td class="p-3 font-mono text-[#25B8CE]">deepseek-v4.1</td>
-                  <td class="p-3"><span class="badge-pass px-2 py-0.5 rounded text-[10px] font-mono">VERIFIED</span></td>
-                  <td class="p-3 font-mono text-[#718198]">3 files</td>
-                  <td class="p-3 font-mono text-[#718198]">4f03e317...</td>
-                  <td class="p-3 text-right">
-                    <button onclick="inspectSample('sales')" class="px-2.5 py-1 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-[#25B8CE] border border-[#263445] transition">
+                <tr class="hover:bg-white/[0.02] transition">
+                  <td class="p-3.5 font-medium text-white mono">sales_clean.csv</td>
+                  <td class="p-3.5 text-slate-300 max-w-xs truncate">Which category generated the highest revenue? Rank categories & plot chart.</td>
+                  <td class="p-3.5 font-mono text-[#00D2FF]">deepseek-v4.1</td>
+                  <td class="p-3.5"><span class="badge-pass px-2 py-0.5 rounded text-[10px] font-mono font-semibold">VERIFIED</span></td>
+                  <td class="p-3.5 font-mono text-slate-400">3 files</td>
+                  <td class="p-3.5 font-mono text-slate-500">4f03e317...</td>
+                  <td class="p-3.5 text-right">
+                    <button onclick="inspectSample('sales')" class="px-3 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-[#00D2FF] border border-white/[0.08] transition shadow-sm font-medium">
                       Inspect Details
                     </button>
                   </td>
                 </tr>
 
                 <!-- Golden Run 2: Churn -->
-                <tr class="hover:bg-[#151F2B]/50 transition">
-                  <td class="p-3 font-medium text-[#E8EEF6] mono">customer_churn.csv</td>
-                  <td class="p-3 text-[#9AA9BB] max-w-xs truncate">Analyze churn rate across contract types and visualize distribution.</td>
-                  <td class="p-3 font-mono text-[#25B8CE]">deepseek-v4.1</td>
-                  <td class="p-3"><span class="badge-pass px-2 py-0.5 rounded text-[10px] font-mono">VERIFIED</span></td>
-                  <td class="p-3 font-mono text-[#718198]">2 files</td>
-                  <td class="p-3 font-mono text-[#718198]">8e12a9c3...</td>
-                  <td class="p-3 text-right">
-                    <button onclick="inspectSample('churn')" class="px-2.5 py-1 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-[#25B8CE] border border-[#263445] transition">
+                <tr class="hover:bg-white/[0.02] transition">
+                  <td class="p-3.5 font-medium text-white mono">customer_churn.csv</td>
+                  <td class="p-3.5 text-slate-300 max-w-xs truncate">Analyze churn rate across contract types and visualize distribution.</td>
+                  <td class="p-3.5 font-mono text-[#00D2FF]">deepseek-v4.1</td>
+                  <td class="p-3.5"><span class="badge-pass px-2 py-0.5 rounded text-[10px] font-mono font-semibold">VERIFIED</span></td>
+                  <td class="p-3.5 font-mono text-slate-400">2 files</td>
+                  <td class="p-3.5 font-mono text-slate-500">8e12a9c3...</td>
+                  <td class="p-3.5 text-right">
+                    <button onclick="inspectSample('churn')" class="px-3 py-1 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-[#00D2FF] border border-white/[0.08] transition shadow-sm font-medium">
                       Inspect Details
                     </button>
                   </td>
@@ -738,43 +842,43 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
           </div>
 
           <!-- Expanded Sample Detail Inspection Card -->
-          <div id="sample-detail-panel" class="panel p-5 space-y-4">
-            <div class="flex items-center justify-between pb-2 border-b border-[#263445]">
+          <div id="sample-detail-panel" class="chert-panel p-6 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <div>
-                <h3 class="text-sm font-semibold text-[#E8EEF6]" id="sample-detail-title">Sample Run: Category Revenue Breakdown</h3>
-                <p class="text-[11px] text-[#718198]" id="sample-detail-subtitle">Dataset: sales_clean.csv (25 rows) • Total Revenue: $160,775.00</p>
+                <h3 class="text-sm font-semibold text-white" id="sample-detail-title">Sample Run: Category Revenue Breakdown</h3>
+                <p class="text-[11px] text-slate-400" id="sample-detail-subtitle">Dataset: sales_clean.csv (25 rows) • Total Revenue: $160,775.00</p>
               </div>
-              <button onclick="loadSampleIntoWorkspace()" class="px-3 py-1.5 rounded bg-[#25B8CE] hover:bg-[#209fb3] text-black text-xs font-medium transition">
-                Load Into Workspace
+              <button onclick="loadSampleIntoWorkspace()" class="btn-gradient px-4 py-1.5 rounded-lg text-black text-xs font-semibold transition">
+                Load Into Workspace ➔
               </button>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 text-xs">
-              <div class="lg:col-span-7 space-y-3">
-                <div class="p-3 rounded bg-[#0A0E15] border border-[#263445] space-y-1.5">
-                  <div class="text-[10px] font-mono text-[#718198] uppercase">Validated Execution Summary</div>
-                  <div id="sample-detail-summary" class="text-xs text-[#E8EEF6] leading-relaxed">
+              <div class="lg:col-span-7 space-y-3.5">
+                <div class="p-4 rounded-lg chert-well space-y-1.5">
+                  <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Validated Execution Summary</div>
+                  <div id="sample-detail-summary" class="text-xs text-slate-200 leading-relaxed">
                     Electronics generated the highest total revenue: $141,150.00 (87.8% of total). Accessories ranked second with $19,625.00 (12.2%). Total evaluated revenue was $160,775.00 across 25 records with 0 discrepancies.
                   </div>
                 </div>
-                <div class="space-y-1">
-                  <span class="text-[10px] font-mono text-[#718198] uppercase">Generated Artifacts</span>
-                  <div class="flex space-x-2 text-[11px] font-mono">
-                    <span class="px-2 py-0.5 rounded bg-[#0A0E15] text-[#25B8CE] border border-[#263445]">chart.png (51.6 KB)</span>
-                    <span class="px-2 py-0.5 rounded bg-[#0A0E15] text-[#E8EEF6] border border-[#263445]">category_revenue_totals.csv</span>
-                    <span class="px-2 py-0.5 rounded bg-[#0A0E15] text-[#9AA9BB] border border-[#263445]">metrics.json</span>
+                <div class="space-y-1.5">
+                  <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Generated Artifacts:</span>
+                  <div class="flex flex-wrap gap-2 text-[11px] font-mono">
+                    <span class="px-2.5 py-1 rounded-md bg-black/50 text-[#00D2FF] border border-white/[0.08]">chart.png (51.6 KB)</span>
+                    <span class="px-2.5 py-1 rounded-md bg-black/50 text-white border border-white/[0.08]">category_revenue_totals.csv</span>
+                    <span class="px-2.5 py-1 rounded-md bg-black/50 text-slate-400 border border-white/[0.08]">metrics.json</span>
                   </div>
                 </div>
               </div>
 
-              <div class="lg:col-span-5 p-3 rounded bg-[#0A0E15] border border-[#263445] space-y-2">
-                <div class="text-[10px] font-mono text-[#718198] uppercase">Observed Containment Card</div>
-                <div class="space-y-1 text-[11px]">
-                  <div class="flex justify-between"><span class="text-[#718198]">Network:</span><span class="font-mono text-emerald-400">none (isolated)</span></div>
-                  <div class="flex justify-between"><span class="text-[#718198]">Rootfs:</span><span class="font-mono text-emerald-400">read-only</span></div>
-                  <div class="flex justify-between"><span class="text-[#718198]">User:</span><span class="font-mono text-emerald-400">10001:10001</span></div>
-                  <div class="flex justify-between"><span class="text-[#718198]">Memory Cap:</span><span class="font-mono text-emerald-400">512 MB</span></div>
-                  <div class="flex justify-between"><span class="text-[#718198]">PID Cap:</span><span class="font-mono text-emerald-400">64 PIDs</span></div>
+              <div class="lg:col-span-5 p-4 rounded-lg chert-well space-y-2.5">
+                <div class="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Observed Containment Card</div>
+                <div class="space-y-1.5 text-[11px]">
+                  <div class="flex justify-between"><span class="text-slate-400">Network:</span><span class="font-mono text-emerald-400 font-semibold">none (isolated)</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">Rootfs:</span><span class="font-mono text-emerald-400 font-semibold">read-only</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">User:</span><span class="font-mono text-emerald-400 font-semibold">10001:10001</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">Memory Cap:</span><span class="font-mono text-emerald-400 font-semibold">512 MB</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">PID Cap:</span><span class="font-mono text-emerald-400 font-semibold">64 PIDs</span></div>
                 </div>
               </div>
             </div>
@@ -788,73 +892,76 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         <section id="view-architecture" class="hidden space-y-6">
 
           <!-- Header -->
-          <div class="pb-2 border-b border-[#263445]">
-            <h1 class="text-xl font-bold tracking-tight text-[#E8EEF6]">System Architecture & Containment</h1>
-            <p class="text-xs text-[#9AA9BB] mt-0.5">
+          <div class="pb-3 border-b border-white/[0.07]">
+            <h1 class="text-xl font-bold tracking-tight text-white">System Architecture & Containment</h1>
+            <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
               Production infrastructure flow, trusted controller boundaries, and defense-in-depth isolation matrix.
             </p>
           </div>
 
           <!-- Visual Architecture Pipeline Diagram -->
-          <div class="panel p-5 space-y-4">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">End-to-End Orchestration Architecture</h3>
+          <div class="chert-panel p-6 space-y-4">
+            <div class="flex items-center space-x-2 border-b border-white/[0.06] pb-3">
+              <span class="w-2 h-2 rounded-full bg-[#00D2FF]"></span>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">End-to-End Orchestration Architecture</h3>
+            </div>
 
-            <!-- SVG Visual Architecture Diagram -->
+            <!-- SVG Visual Architecture Diagram with Electric Cyan Accents -->
             <div class="w-full overflow-x-auto py-2">
               <svg class="w-full min-w-[760px] h-[220px]" viewBox="0 0 880 220" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <!-- Group 1: Ingress Layer -->
-                <rect x="20" y="20" width="160" height="180" rx="8" fill="#111A25" stroke="#263445" stroke-width="1.5" />
-                <text x="35" y="45" fill="#718198" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">INGRESS LAYER</text>
-                <rect x="35" y="60" width="130" height="40" rx="6" fill="#151F2B" stroke="#263445" />
-                <text x="50" y="85" fill="#E8EEF6" font-size="12" font-family="Inter, sans-serif" font-weight="500">HTTPS Client</text>
-                <path d="M100 100 L100 120" stroke="#25B8CE" stroke-width="1.5" marker-end="url(#arrow)" />
-                <rect x="35" y="125" width="130" height="55" rx="6" fill="#151F2B" stroke="#25B8CE" stroke-width="1.5" />
-                <text x="50" y="148" fill="#25B8CE" font-size="12" font-family="Inter, sans-serif" font-weight="600">Caddy Proxy</text>
-                <text x="50" y="165" fill="#718198" font-size="10" font-family="'JetBrains Mono', monospace">Let's Encrypt TLS</text>
+                <rect x="20" y="20" width="160" height="180" rx="10" fill="#0A0E18" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
+                <text x="35" y="45" fill="#94A3B8" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">INGRESS LAYER</text>
+                <rect x="35" y="60" width="130" height="40" rx="6" fill="#111728" stroke="rgba(255,255,255,0.08)" />
+                <text x="50" y="85" fill="#F1F5F9" font-size="12" font-family="Inter, sans-serif" font-weight="500">HTTPS Client</text>
+                <path d="M100 100 L100 120" stroke="#00D2FF" stroke-width="1.5" marker-end="url(#arrow)" />
+                <rect x="35" y="125" width="130" height="55" rx="6" fill="#111728" stroke="#00D2FF" stroke-width="1.5" />
+                <text x="50" y="148" fill="#00D2FF" font-size="12" font-family="Inter, sans-serif" font-weight="600">Caddy Proxy</text>
+                <text x="50" y="165" fill="#94A3B8" font-size="10" font-family="'JetBrains Mono', monospace">Let's Encrypt TLS</text>
 
                 <!-- Connector 1 -> 2 -->
-                <path d="M180 152 L220 152" stroke="#25B8CE" stroke-width="1.5" marker-end="url(#arrow)" />
+                <path d="M180 152 L220 152" stroke="#00D2FF" stroke-width="1.5" marker-end="url(#arrow)" />
 
                 <!-- Group 2: Host Application (TCB) -->
-                <rect x="230" y="20" width="340" height="180" rx="8" fill="#111A25" stroke="#263445" stroke-width="1.5" />
-                <text x="245" y="45" fill="#718198" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">TRUSTED COMPUTING BASE (HOST)</text>
+                <rect x="230" y="20" width="340" height="180" rx="10" fill="#0A0E18" stroke="rgba(255,255,255,0.08)" stroke-width="1.5" />
+                <text x="245" y="45" fill="#94A3B8" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">TRUSTED COMPUTING BASE (HOST)</text>
 
                 <!-- FastAPI -->
-                <rect x="245" y="60" width="140" height="50" rx="6" fill="#151F2B" stroke="#263445" />
-                <text x="255" y="82" fill="#E8EEF6" font-size="11" font-family="Inter, sans-serif" font-weight="600">FastAPI Backend</text>
-                <text x="255" y="98" fill="#718198" font-size="9" font-family="'JetBrains Mono', monospace">SQLite Persistence</text>
+                <rect x="245" y="60" width="140" height="50" rx="6" fill="#111728" stroke="rgba(255,255,255,0.08)" />
+                <text x="255" y="82" fill="#F1F5F9" font-size="11" font-family="Inter, sans-serif" font-weight="600">FastAPI Backend</text>
+                <text x="255" y="98" fill="#94A3B8" font-size="9" font-family="'JetBrains Mono', monospace">SQLite Persistence</text>
 
                 <!-- Vultr Inference -->
-                <rect x="405" y="60" width="150" height="50" rx="6" fill="#151F2B" stroke="#25B8CE" />
-                <text x="415" y="80" fill="#25B8CE" font-size="11" font-family="Inter, sans-serif" font-weight="600">Vultr Serverless</text>
-                <text x="415" y="96" fill="#9AA9BB" font-size="9" font-family="'JetBrains Mono', monospace">deepseek-v4.1-flash</text>
+                <rect x="405" y="60" width="150" height="50" rx="6" fill="#111728" stroke="#00D2FF" />
+                <text x="415" y="80" fill="#00D2FF" font-size="11" font-family="Inter, sans-serif" font-weight="600">Vultr Serverless</text>
+                <text x="415" y="96" fill="#CBD5E1" font-size="9" font-family="'JetBrains Mono', monospace">deepseek-v4.1-flash</text>
 
-                <path d="M385 85 L405 85" stroke="#25B8CE" stroke-width="1.5" stroke-dasharray="2 2" />
+                <path d="M385 85 L405 85" stroke="#00D2FF" stroke-width="1.5" stroke-dasharray="2 2" />
 
                 <!-- 4 Agent Roles -->
-                <rect x="245" y="125" width="310" height="55" rx="6" fill="#151F2B" stroke="#263445" />
-                <text x="255" y="145" fill="#E8EEF6" font-size="11" font-family="Inter, sans-serif" font-weight="500">4-Stage AI Pipeline</text>
-                <text x="255" y="163" fill="#718198" font-size="10" font-family="'JetBrains Mono', monospace">Planner ➔ Coder (AST) ➔ Repairer ➔ Explainer</text>
+                <rect x="245" y="125" width="310" height="55" rx="6" fill="#111728" stroke="rgba(255,255,255,0.08)" />
+                <text x="255" y="145" fill="#F1F5F9" font-size="11" font-family="Inter, sans-serif" font-weight="500">4-Stage AI Pipeline</text>
+                <text x="255" y="163" fill="#94A3B8" font-size="10" font-family="'JetBrains Mono', monospace">Planner ➔ Coder (AST) ➔ Repairer ➔ Explainer</text>
 
                 <!-- Connector 2 -> 3 -->
-                <path d="M570 152 L610 152" stroke="#25B8CE" stroke-width="1.5" marker-end="url(#arrow)" />
+                <path d="M570 152 L610 152" stroke="#00D2FF" stroke-width="1.5" marker-end="url(#arrow)" />
 
                 <!-- Group 3: Disposable Docker Sandbox -->
-                <rect x="620" y="20" width="240" height="180" rx="8" fill="#111A25" stroke="#25B8CE" stroke-width="1.5" />
-                <text x="635" y="45" fill="#25B8CE" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">DISPOSABLE SANDBOX</text>
+                <rect x="620" y="20" width="240" height="180" rx="10" fill="#0A0E18" stroke="#00D2FF" stroke-width="1.5" />
+                <text x="635" y="45" fill="#00D2FF" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">DISPOSABLE SANDBOX</text>
 
-                <rect x="635" y="60" width="210" height="120" rx="6" fill="#0A0E15" stroke="#263445" />
+                <rect x="635" y="60" width="210" height="120" rx="6" fill="#04060A" stroke="rgba(255,255,255,0.08)" />
                 <text x="645" y="80" fill="#34D399" font-size="11" font-family="'JetBrains Mono', monospace" font-weight="600">--network none</text>
-                <text x="645" y="98" fill="#E8EEF6" font-size="10" font-family="'JetBrains Mono', monospace">--read-only rootfs</text>
-                <text x="645" y="116" fill="#E8EEF6" font-size="10" font-family="'JetBrains Mono', monospace">UID 10001:10001 (non-root)</text>
-                <text x="645" y="134" fill="#E8EEF6" font-size="10" font-family="'JetBrains Mono', monospace">--pids-limit 64 (cgroups)</text>
-                <text x="645" y="152" fill="#E8EEF6" font-size="10" font-family="'JetBrains Mono', monospace">512MB RAM • 20MB tmpfs /out</text>
-                <text x="645" y="168" fill="#718198" font-size="9" font-family="'JetBrains Mono', monospace">Zero Docker Socket Mount</text>
+                <text x="645" y="98" fill="#F1F5F9" font-size="10" font-family="'JetBrains Mono', monospace">--read-only rootfs</text>
+                <text x="645" y="116" fill="#F1F5F9" font-size="10" font-family="'JetBrains Mono', monospace">UID 10001:10001 (non-root)</text>
+                <text x="645" y="134" fill="#F1F5F9" font-size="10" font-family="'JetBrains Mono', monospace">--pids-limit 64 (cgroups)</text>
+                <text x="645" y="152" fill="#F1F5F9" font-size="10" font-family="'JetBrains Mono', monospace">512MB RAM • 20MB tmpfs /out</text>
+                <text x="645" y="168" fill="#94A3B8" font-size="9" font-family="'JetBrains Mono', monospace">Zero Docker Socket Mount</text>
 
                 <!-- Arrow marker def -->
                 <defs>
                   <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#25B8CE" />
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#00D2FF" />
                   </marker>
                 </defs>
               </svg>
@@ -862,60 +969,63 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
           </div>
 
           <!-- Blast Radius Zero Defense Matrix Table -->
-          <div class="panel p-5 space-y-3">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-[#9AA9BB]">Blast Radius Zero Defense Matrix</h3>
-            <div class="border border-[#263445] rounded overflow-hidden text-xs">
+          <div class="chert-panel p-6 space-y-4">
+            <div class="flex items-center space-x-2 border-b border-white/[0.06] pb-3">
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-300">Blast Radius Zero Defense Matrix</h3>
+            </div>
+            <div class="border border-white/[0.08] rounded-lg overflow-hidden text-xs chert-well">
               <table class="min-w-full text-left">
-                <thead class="bg-[#0A0E15] text-[#9AA9BB] font-mono text-[11px] border-b border-[#263445]">
+                <thead class="bg-black/60 text-slate-400 font-mono text-[11px] border-b border-white/[0.06]">
                   <tr>
-                    <th class="p-2.5">Boundary</th>
-                    <th class="p-2.5">Enforced Control</th>
-                    <th class="p-2.5">Enforcement Mechanism</th>
-                    <th class="p-2.5">Security Limitation & Verification</th>
+                    <th class="p-3">Boundary</th>
+                    <th class="p-3">Enforced Control</th>
+                    <th class="p-3">Enforcement Mechanism</th>
+                    <th class="p-3">Security Limitation & Verification</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-[#263445]/60 text-[11px]">
+                <tbody class="divide-y divide-white/[0.04] text-[11px]">
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Network</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">--network none</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Isolated container network namespace; zero socket or DNS access.</td>
-                    <td class="p-2.5 text-[#718198]">Verified via Red Team Probe #1 (socket creation blocked).</td>
+                    <td class="p-3 font-medium text-white">Network</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">--network none</td>
+                    <td class="p-3 text-slate-300">Isolated container network namespace; zero socket or DNS access.</td>
+                    <td class="p-3 text-slate-400">Verified via Red Team Probe #1 (socket creation blocked).</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Filesystem</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">--read-only</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Root filesystem is mounted read-only; system libraries cannot be modified.</td>
-                    <td class="p-2.5 text-[#718198]">Write attempts fail with Read-only file system (EROFS).</td>
+                    <td class="p-3 font-medium text-white">Filesystem</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">--read-only</td>
+                    <td class="p-3 text-slate-300">Root filesystem is mounted read-only; system libraries cannot be modified.</td>
+                    <td class="p-3 text-slate-400">Write attempts fail with Read-only file system (EROFS).</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Privileges</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">UID 10001:10001</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Non-root execution reduces the privileges available to a compromised workload.</td>
-                    <td class="p-2.5 text-[#718198]">Does not protect against zero-day Linux kernel vulnerabilities.</td>
+                    <td class="p-3 font-medium text-white">Privileges</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">UID 10001:10001</td>
+                    <td class="p-3 text-slate-300">Non-root execution reduces the privileges available to a compromised workload.</td>
+                    <td class="p-3 text-slate-400">Does not protect against zero-day Linux kernel vulnerabilities.</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Capabilities</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">--cap-drop ALL</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Strips all Linux capabilities (raw sockets, ptrace, kernel module loading).</td>
-                    <td class="p-2.5 text-[#718198]">Verified in Docker inspect State.CapDrop = ["ALL"].</td>
+                    <td class="p-3 font-medium text-white">Capabilities</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">--cap-drop ALL</td>
+                    <td class="p-3 text-slate-300">Strips all Linux capabilities (raw sockets, ptrace, kernel module loading).</td>
+                    <td class="p-3 text-slate-400">Verified in Docker inspect State.CapDrop = ["ALL"].</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Processes</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">--pids-limit 64</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Linux cgroups PID controller (pids.max) enforces ceiling.</td>
-                    <td class="p-2.5 text-[#718198]">Verified via Red Team Probe #3 (fork bomb halted at 62 PIDs).</td>
+                    <td class="p-3 font-medium text-white">Processes</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">--pids-limit 64</td>
+                    <td class="p-3 text-slate-300">Linux cgroups PID controller (pids.max) enforces ceiling.</td>
+                    <td class="p-3 text-slate-400">Verified via Red Team Probe #3 (fork bomb halted at 62 PIDs).</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Storage</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">20 MB tmpfs /out</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Kernel-enforced during run; tar-stream extracted by trusted controller.</td>
-                    <td class="p-2.5 text-[#718198]">Attempts to exceed 20 MB fail with No space left on device.</td>
+                    <td class="p-3 font-medium text-white">Storage</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">20 MB tmpfs /out</td>
+                    <td class="p-3 text-slate-300">Kernel-enforced during run; tar-stream extracted by trusted controller.</td>
+                    <td class="p-3 text-slate-400">Attempts to exceed 20 MB fail with No space left on device.</td>
                   </tr>
                   <tr>
-                    <td class="p-2.5 font-medium text-[#E8EEF6]">Integrity</td>
-                    <td class="p-2.5 font-mono text-[#25B8CE]">SHA-256 Receipt</td>
-                    <td class="p-2.5 text-[#9AA9BB]">Tamper-evident canonical digest covers code, CSV, inspect, and artifacts.</td>
-                    <td class="p-2.5 text-[#718198]">Provides post-run tamper detection; not a hardware TPM attestation.</td>
+                    <td class="p-3 font-medium text-white">Integrity</td>
+                    <td class="p-3 font-mono text-[#00D2FF]">SHA-256 Receipt</td>
+                    <td class="p-3 text-slate-300">Tamper-evident canonical digest covers code, CSV, inspect, and artifacts.</td>
+                    <td class="p-3 text-slate-400">Provides post-run tamper detection; not a hardware TPM attestation.</td>
                   </tr>
                 </tbody>
               </table>
@@ -947,9 +1057,9 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const btn = document.getElementById(`nav-btn-${v}`);
         if (el) el.classList.add('hidden');
         if (btn) {
-          btn.className = 'w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition text-left';
+          btn.className = 'w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition text-left group';
           const svg = btn.querySelector('svg');
-          if (svg) svg.className = 'w-4 h-4 text-[#718198]';
+          if (svg) svg.className = 'w-4 h-4 text-slate-500 group-hover:text-slate-300 transition';
         }
       });
 
@@ -957,9 +1067,9 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
       const activeBtn = document.getElementById(`nav-btn-${viewName}`);
       if (activeEl) activeEl.classList.remove('hidden');
       if (activeBtn) {
-        activeBtn.className = 'w-full flex items-center space-x-3 px-3 py-2 rounded-md font-medium text-[#E8EEF6] bg-[#151F2B] border border-[#263445] transition text-left';
+        activeBtn.className = 'w-full flex items-center space-x-3 px-3 py-2 rounded-lg font-medium text-white bg-white/[0.08] border border-white/[0.1] shadow-sm transition text-left group';
         const svg = activeBtn.querySelector('svg');
-        if (svg) svg.className = 'w-4 h-4 text-[#25B8CE]';
+        if (svg) svg.className = 'w-4 h-4 text-[#00D2FF]';
       }
 
       // Update breadcrumb
@@ -987,13 +1097,13 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const modelText = document.getElementById('model-status-text');
 
         if (data.status === 'ok') {
-          dockerIndicator.className = data.docker_available ? 'w-2 h-2 rounded-full bg-emerald-400' : 'w-2 h-2 rounded-full bg-rose-400';
+          dockerIndicator.className = data.docker_available ? 'relative inline-flex rounded-full h-2 w-2 bg-emerald-400' : 'relative inline-flex rounded-full h-2 w-2 bg-rose-400';
           dockerText.innerText = data.docker_available ? 'Engine Ready' : 'Unavailable';
           modelText.innerText = data.model_name || 'deepseek-v4.1-flash-1017';
         }
       } catch (e) {
         document.getElementById('docker-status-text').innerText = 'Offline';
-        document.getElementById('docker-indicator').className = 'w-2 h-2 rounded-full bg-rose-400';
+        document.getElementById('docker-indicator').className = 'relative inline-flex rounded-full h-2 w-2 bg-rose-400';
       }
     }
     checkHealth();
@@ -1007,23 +1117,24 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const badge = document.getElementById('redteam-status-badge');
         const probeIds = ['network_isolation', 'secret_isolation', 'pid_limit'];
         if (data.enabled) {
-          badge.className = 'badge-pass text-[10px] font-mono px-2 py-0.5 rounded';
+          badge.className = 'badge-pass text-[10px] font-mono px-2.5 py-0.5 rounded font-semibold';
           badge.innerText = 'Active / Enabled';
           probeIds.forEach(id => {
             const btn = document.getElementById(`btn-probe-${id}`);
             const st = document.getElementById(`probe-status-${id}`);
             if (btn) {
               btn.disabled = false;
-              btn.classList.remove('opacity-40', 'cursor-not-allowed', 'text-[#718198]');
+              btn.classList.remove('opacity-40', 'cursor-not-allowed', 'text-slate-500');
+              btn.classList.add('text-[#00D2FF]', 'hover:bg-white/[0.08]', 'border-[#00D2FF]/40');
               btn.removeAttribute('title');
             }
             if (st && st.innerText === 'Disabled') {
               st.innerText = 'Ready';
-              st.className = 'text-[11px] font-mono text-[#718198]';
+              st.className = 'text-[11px] font-mono text-slate-400';
             }
           });
         } else {
-          badge.className = 'badge-neutral text-[10px] font-mono px-2 py-0.5 rounded';
+          badge.className = 'badge-neutral text-[10px] font-mono px-2.5 py-0.5 rounded font-semibold';
           badge.innerText = 'Disabled by Default (Feature Flag OFF)';
           probeIds.forEach(id => {
             const btn = document.getElementById(`btn-probe-${id}`);
@@ -1031,11 +1142,12 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
             if (btn) {
               btn.disabled = true;
               btn.title = 'Red Team Arena is disabled by default via server configuration';
-              btn.classList.add('opacity-40', 'cursor-not-allowed', 'text-[#718198]');
+              btn.classList.add('opacity-40', 'cursor-not-allowed', 'text-slate-500');
+              btn.classList.remove('text-[#00D2FF]', 'hover:bg-white/[0.08]', 'border-[#00D2FF]/40');
             }
             if (st) {
               st.innerText = 'Disabled';
-              st.className = 'text-[11px] font-mono text-[#718198]';
+              st.className = 'text-[11px] font-mono text-slate-500';
             }
           });
         }
@@ -1100,14 +1212,14 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
 
       if (data.preview && data.preview.length > 0) {
         const cols = Object.keys(data.preview[0]);
-        let thead = '<thead class="bg-[#0A0E15] text-[#9AA9BB] font-mono text-[10px] border-b border-[#263445]"><tr>';
-        cols.forEach(c => thead += `<th class="p-2">${c}</th>`);
+        let thead = '<thead class="bg-black/60 text-slate-400 font-mono text-[10px] border-b border-white/[0.06]"><tr>';
+        cols.forEach(c => thead += `<th class="p-2.5">${c}</th>`);
         thead += '</tr></thead>';
 
         let tbody = '<tbody>';
         data.preview.forEach(row => {
-          tbody += '<tr class="border-b border-[#263445]/40 hover:bg-[#151F2B]/40">';
-          cols.forEach(c => tbody += `<td class="p-2 text-[#E8EEF6] font-mono text-[10px]">${row[c] !== null ? row[c] : '<span class="text-[#718198]">null</span>'}</td>`);
+          tbody += '<tr class="border-b border-white/[0.04] hover:bg-white/[0.02]">';
+          cols.forEach(c => tbody += `<td class="p-2.5 text-slate-200 font-mono text-[10px]">${row[c] !== null ? row[c] : '<span class="text-slate-600">null</span>'}</td>`);
           tbody += '</tr>';
         });
         tbody += '</tbody>';
@@ -1132,12 +1244,14 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
 
       if (activeDatasetId && q.length > 0) {
         runBtn.disabled = false;
-        dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-400';
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981]';
         text.innerText = 'Ready to analyze';
+        text.className = 'font-medium text-emerald-400';
       } else {
         runBtn.disabled = true;
-        dot.className = 'w-1.5 h-1.5 rounded-full bg-[#718198]';
+        dot.className = 'w-2 h-2 rounded-full bg-slate-600';
         text.innerText = !activeDatasetId ? 'Select dataset' : 'Enter question';
+        text.className = 'font-medium text-slate-400';
       }
     }
 
@@ -1193,7 +1307,7 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
     function resetStepper() {
       ['planning', 'generating', 'running', 'explaining', 'completed'].forEach(s => {
         const dot = document.getElementById(`dot-${s}`);
-        if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-600';
+        if (dot) dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
       });
     }
 
@@ -1205,11 +1319,11 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const dot = document.getElementById(`dot-${s}`);
         if (!dot) return;
         if (idx < currentIndex) {
-          dot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#10B981]';
         } else if (idx === currentIndex) {
-          dot.className = 'w-2 h-2 rounded-full bg-cyan-400 animate-pulse stepper-active';
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-[#00D2FF] animate-pulse stepper-active';
         } else {
-          dot.className = 'w-2 h-2 rounded-full bg-slate-600';
+          dot.className = 'w-2.5 h-2.5 rounded-full bg-slate-700';
         }
       });
     }
@@ -1235,7 +1349,7 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
           clearInterval(pollInterval);
           document.getElementById('run-btn').disabled = false;
           if (status === 'completed') {
-            document.getElementById(`dot-completed`).className = 'w-2 h-2 rounded-full bg-emerald-400';
+            document.getElementById(`dot-completed`).className = 'w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981]';
             renderResults(task);
           } else {
             alert('Execution failed: ' + (task.error_message || 'Sandbox error'));
@@ -1255,7 +1369,7 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
       if (task.summary_md) {
         expDiv.innerHTML = marked.parse(task.summary_md);
       } else if (task.error_message) {
-        expDiv.innerHTML = `<div class="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded text-xs mono">${task.error_message}</div>`;
+        expDiv.innerHTML = `<div class="p-3 bg-rose-950/40 border border-rose-800 text-rose-300 rounded-lg text-xs mono">${task.error_message}</div>`;
       }
 
       // Code Content
@@ -1274,29 +1388,29 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
       const chartContainer = document.getElementById('full-chart-container');
       const overviewPreview = document.getElementById('overview-chart-preview');
       artifactsTable.innerHTML = '';
-      chartContainer.innerHTML = '<p class="text-xs text-[#718198]">No chart generated.</p>';
-      overviewPreview.innerHTML = '<p class="text-[11px] text-[#718198]">No chart generated.</p>';
+      chartContainer.innerHTML = '<p class="text-xs text-slate-500 font-mono">No chart generated.</p>';
+      overviewPreview.innerHTML = '<p class="text-[11px] text-slate-500 font-mono">No chart generated.</p>';
 
       const arts = task.artifacts || [];
       document.getElementById('rtab-art-count').innerText = arts.length;
 
       arts.forEach(art => {
         artifactsTable.innerHTML += `
-          <tr class="hover:bg-[#151F2B]/40">
-            <td class="p-2.5 font-medium text-[#E8EEF6] font-mono">${art.filename}</td>
-            <td class="p-2.5 text-[#9AA9BB] font-mono">${art.mime || 'application/octet-stream'}</td>
-            <td class="p-2.5 text-[#718198] font-mono">${Number(art.file_size).toLocaleString()} B</td>
-            <td class="p-2.5 text-[#718198] font-mono text-[10px]">${(art.sha256 || '').substring(0, 16)}...</td>
-            <td class="p-2.5 text-right">
-              <a href="${art.download_url}" download class="text-[#25B8CE] hover:underline font-mono">Download</a>
+          <tr class="hover:bg-white/[0.02]">
+            <td class="p-3 font-medium text-white font-mono">${art.filename}</td>
+            <td class="p-3 text-slate-300 font-mono">${art.mime || 'application/octet-stream'}</td>
+            <td class="p-3 text-slate-400 font-mono">${Number(art.file_size).toLocaleString()} B</td>
+            <td class="p-3 text-slate-500 font-mono text-[10px]">${(art.sha256 || '').substring(0, 16)}...</td>
+            <td class="p-3 text-right">
+              <a href="${art.download_url}" download class="text-[#00D2FF] hover:underline font-mono">Download</a>
             </td>
           </tr>
         `;
 
         if (art.filename.endsWith('.png')) {
-          const imgHtml = `<img src="${art.download_url}" class="rounded border border-[#263445] max-h-96 object-contain shadow-lg">`;
+          const imgHtml = `<img src="${art.download_url}" class="rounded-lg border border-white/[0.08] max-h-96 object-contain shadow-2xl">`;
           chartContainer.innerHTML = imgHtml;
-          overviewPreview.innerHTML = `<img src="${art.download_url}" class="rounded max-h-40 object-contain">`;
+          overviewPreview.innerHTML = `<img src="${art.download_url}" class="rounded max-h-40 object-contain shadow-lg">`;
         }
       });
 
@@ -1307,11 +1421,11 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         Object.values(task.containment_card).forEach(c => {
           const badgeClass = c.status === 'pass' ? 'badge-pass' : (c.status === 'warning' ? 'badge-warn' : 'badge-fail');
           cardGrid.innerHTML += `
-            <div class="p-2.5 rounded bg-[#0A0E15] border border-[#263445] space-y-1">
-              <div class="text-[#718198] text-[11px] font-medium truncate">${c.name}</div>
+            <div class="p-3 rounded-lg chert-well space-y-1.5">
+              <div class="text-slate-400 text-[11px] font-medium truncate">${c.name}</div>
               <div class="flex items-center justify-between">
-                <span class="mono text-[#E8EEF6] truncate text-[11px]" title="${JSON.stringify(c.observed)}">${JSON.stringify(c.observed)}</span>
-                <span class="${badgeClass} px-1.5 py-0.2 rounded uppercase font-mono text-[9px]">${c.status}</span>
+                <span class="mono text-white truncate text-[11px]" title="${JSON.stringify(c.observed)}">${JSON.stringify(c.observed)}</span>
+                <span class="${badgeClass} px-1.5 py-0.2 rounded uppercase font-mono text-[9px] font-semibold">${c.status}</span>
               </div>
             </div>
           `;
@@ -1338,13 +1452,13 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const pane = document.getElementById(`pane-${t}`);
         const btn = document.getElementById(`rtab-${t}`);
         if (pane) pane.classList.add('hidden');
-        if (btn) btn.className = 'px-3 py-1.5 rounded-md font-medium text-[#9AA9BB] hover:text-[#E8EEF6] hover:bg-[#111A25] transition';
+        if (btn) btn.className = 'px-3 py-1.5 rounded-md font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition';
       });
 
       const activePane = document.getElementById(`pane-${tabName}`);
       const activeBtn = document.getElementById(`rtab-${tabName}`);
       if (activePane) activePane.classList.remove('hidden');
-      if (activeBtn) activeBtn.className = 'px-3 py-1.5 rounded-md font-medium text-[#25B8CE] bg-[#151F2B] border border-[#263445] transition';
+      if (activeBtn) activeBtn.className = 'px-3 py-1.5 rounded-md font-medium text-[#00D2FF] bg-white/[0.08] shadow-sm transition';
     }
 
     function copyCode() {
@@ -1372,7 +1486,7 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
       const activeLabel = document.getElementById('probe-active-label');
 
       statusSpan.innerText = 'Running...';
-      statusSpan.className = 'text-[11px] font-mono text-[#25B8CE] animate-pulse';
+      statusSpan.className = 'text-[11px] font-mono text-[#00D2FF] animate-pulse';
       btn.disabled = true;
       activeLabel.innerText = `Executing ${probeId}...`;
 
@@ -1430,7 +1544,7 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         const runs = await res.json();
 
         if (runs.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-[#718198]">No probe runs recorded yet.</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500 font-mono">No probe runs recorded yet.</td></tr>';
           return;
         }
 
@@ -1439,19 +1553,19 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
           const badgeClass = r.classification === 'blocked' ? 'badge-pass' : (r.classification === 'succeeded' ? 'badge-fail' : 'badge-warn');
           const timeStr = r.started_at ? new Date(r.started_at).toLocaleTimeString() : 'N/A';
           html += `
-            <tr class="hover:bg-[#151F2B]/40">
-              <td class="p-2.5 font-mono text-[10px] text-[#718198]">${timeStr}</td>
-              <td class="p-2.5 font-medium text-[#E8EEF6]">${r.probe_name || r.probe_id}</td>
-              <td class="p-2.5 font-mono text-[10px] text-[#718198]">${r.mechanism || 'Docker Isolation'}</td>
-              <td class="p-2.5"><span class="${badgeClass} px-2 py-0.2 rounded text-[9px] font-mono uppercase font-bold">${r.classification}</span></td>
-              <td class="p-2.5 font-mono text-[10px] text-[#718198]">${r.duration_ms.toFixed(0)} ms</td>
-              <td class="p-2.5 text-[#E8EEF6] text-xs">${r.observed}</td>
+            <tr class="hover:bg-white/[0.02]">
+              <td class="p-3 font-mono text-[10px] text-slate-500">${timeStr}</td>
+              <td class="p-3 font-medium text-white">${r.probe_name || r.probe_id}</td>
+              <td class="p-3 font-mono text-[10px] text-slate-400">${r.mechanism || 'Docker Isolation'}</td>
+              <td class="p-3"><span class="${badgeClass} px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold">${r.classification}</span></td>
+              <td class="p-3 font-mono text-[10px] text-slate-400">${r.duration_ms.toFixed(0)} ms</td>
+              <td class="p-3 text-slate-300 text-xs">${r.observed}</td>
             </tr>
           `;
         });
         tbody.innerHTML = html;
       } catch (e) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-3 text-center text-[#718198]">Auth token required to view audit logs.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-500 font-mono">Auth token required to view audit logs.</td></tr>';
       }
     }
 
