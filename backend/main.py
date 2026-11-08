@@ -184,3 +184,7 @@ if frontend_html.is_file():
 frontend_dist = Path("frontend/dist")
 if frontend_dist.is_dir():
     app.mount("/dist", StaticFiles(directory=str(frontend_dist), html=True), name="frontend_dist")
+
+frontend_dir = Path("frontend")
+if frontend_dir.is_dir():
+    app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
