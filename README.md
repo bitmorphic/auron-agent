@@ -14,6 +14,7 @@
 [![FastAPI](https://img.shields.io/badge/fastapi-0.115+-green.svg)](https://fastapi.tiangolo.com/)
 [![Tests](https://img.shields.io/badge/tests-145%2F145%20passing-brightgreen.svg)](https://github.com/)
 
+</div>
 An AI data-analysis agent that executes generated Python code inside disposable, isolated Docker containers on a dedicated Vultr VM, backed by tamper-evident SHA-256 receipts and powered by Vultr Serverless Inference.
 
 > **Hackathon Track:** Vultr Agent Rush — Challenge 1: Blast Radius Zero  
