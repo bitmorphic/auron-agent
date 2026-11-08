@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from backend.config import settings
 from backend.database import init_db, list_datasets, create_dataset, get_session
 from backend.csv_tools import validate_and_parse_csv, save_uploaded_csv
+from backend.rate_limit import validate_request_origin, check_rate_limit
 from backend.routes import health, datasets, tasks, redteam
 from backend.session import (
     COOKIE_NAME,
@@ -95,8 +96,13 @@ async def session_middleware(request: Request, call_next):
     Automatically bootstrap an anonymous session on every request.
     - If the request has a valid session cookie, extracts the session_id into request.state.
     - If not, mints a fresh anonymous session and sets the cookie on the response.
+    - Defends against cross-origin CSRF on state-changing requests.
     - Never exposes the raw token in response bodies or logs.
     """
+    csrf_err = validate_request_origin(request)
+    if csrf_err:
+        return csrf_err
+
     existing = get_session_from_request(request)
     new_token: Optional[str] = None
 
@@ -123,9 +129,13 @@ async def session_middleware(request: Request, call_next):
 async def bootstrap_session(request: Request, response: Response):
     """
     Explicitly bootstrap or renew an anonymous workspace session.
+    Protected by per-IP abuse rate limiting.
     Returns the session creation time and expiry. Never returns the token.
     The token is set as a Secure HttpOnly cookie.
     """
+    client_ip = request.client.host if request.client else "unknown"
+    await check_rate_limit(f"ip:{client_ip}", "bootstrap_session", max_requests=30, window_seconds=60)
+
     session_id = getattr(request.state, "session_id", None)
     is_new = getattr(request.state, "is_new_session", False)
     session = get_session(session_id) if session_id else None

@@ -12,6 +12,7 @@ from collections import defaultdict
 from typing import Optional
 
 from fastapi import HTTPException, Request, status
+from fastapi.responses import JSONResponse
 
 from backend.config import settings
 
@@ -71,20 +72,21 @@ def get_global_task_semaphore() -> asyncio.Semaphore:
 # ─── Origin & Referer Validation ──────────────────────────────────────────────
 
 
-def validate_request_origin(request: Request) -> None:
+def validate_request_origin(request: Request) -> Optional[JSONResponse]:
     """
     Validate Origin/Referer headers on state-changing requests (POST, PUT, DELETE)
     to defend against cross-site request forgery.
+    Returns JSONResponse(403) if cross-origin attack detected, else None.
     """
     if request.method not in ("POST", "PUT", "DELETE", "PATCH"):
-        return
+        return None
 
     origin = request.headers.get("origin")
     referer = request.headers.get("referer")
 
     # If neither Origin nor Referer is provided (e.g., standard CLI curl or API test client), allow
     if not origin and not referer:
-        return
+        return None
 
     # Check host header
     host = request.headers.get("host", "").split(":")[0].lower()
@@ -103,12 +105,10 @@ def validate_request_origin(request: Request) -> None:
             origin_host = urlparse(origin).hostname
             if origin_host and origin_host.lower() not in allowed_hosts:
                 logger.warning("Rejected cross-origin request from origin: %s", origin)
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Cross-origin request rejected.",
+                    content={"detail": "Cross-origin request rejected."},
                 )
-        except HTTPException:
-            raise
         except Exception:
             pass
 
@@ -118,12 +118,11 @@ def validate_request_origin(request: Request) -> None:
             ref_host = urlparse(referer).hostname
             if ref_host and ref_host.lower() not in allowed_hosts:
                 logger.warning("Rejected cross-origin request from referer: %s", referer)
-                raise HTTPException(
+                return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Cross-origin referer rejected.",
+                    content={"detail": "Cross-origin referer rejected."},
                 )
-        except HTTPException:
-            raise
         except Exception:
             pass
 
+    return None

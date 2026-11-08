@@ -545,3 +545,74 @@ def test_task_response_no_host_paths(client_a: TestClient):
     assert "owner_session_id" not in data_str
     assert "storage_path" not in data_str
 
+
+
+def test_cross_session_full_isolation_matrix(client_a: TestClient, client_b: TestClient):
+    """Confirm Session B cannot access Session A's datasets, tasks, receipts, verify, or artifacts."""
+    # Session A creates dataset and task
+    files = {"file": ("matrix_a.csv", io.BytesIO(SAMPLE_CSV), "text/csv")}
+    ds_a = client_a.post("/api/datasets", files=files).json()["id"]
+
+    task_a = client_a.post("/api/tasks", json={"dataset_id": ds_a, "question": "Analyze."}).json()["task_id"]
+
+    # Session B attempts to access A's resources:
+    # 1. Dataset detail
+    assert client_b.get(f"/api/datasets/{ds_a}").status_code == 404
+    # 2. Task detail
+    assert client_b.get(f"/api/tasks/{task_a}").status_code == 404
+    # 3. Receipt
+    assert client_b.get(f"/api/tasks/{task_a}/receipt").status_code == 404
+    # 4. Verify receipt
+    assert client_b.get(f"/api/tasks/{task_a}/verify-receipt").status_code == 404
+    # 5. Artifacts
+    assert client_b.get(f"/api/tasks/{task_a}/artifacts/chart.png").status_code == 404
+    # 6. Task submission on A's dataset
+    assert client_b.post("/api/tasks", json={"dataset_id": ds_a, "question": "Hack."}).status_code == 404
+
+
+def test_csrf_unauthorized_origin_rejected(client_a: TestClient):
+    """State-changing requests with hostile Origin header must be rejected with 403 Forbidden."""
+    resp = client_a.post(
+        "/api/datasets/sample",
+        headers={"Origin": "https://attacker.evil.com"},
+        json={"sample_name": "sales_clean"},
+    )
+    assert resp.status_code == 403
+    assert "Cross-origin" in resp.json()["detail"]
+
+
+def test_csrf_authorized_origin_accepted(client_a: TestClient):
+    """State-changing requests with trusted Origin header must be accepted."""
+    resp = client_a.post(
+        "/api/datasets/sample",
+        headers={"Origin": "https://45.77.19.39.sslip.io"},
+        json={"sample_name": "sales_clean"},
+    )
+    assert resp.status_code == 201
+
+
+def test_session_revocation_invalidates_access():
+    """Revoked session token must immediately fail authentication."""
+    from backend.database import revoke_session
+    raw_token = generate_session_token()
+    token_hash = hash_session_token(raw_token)
+    session = create_session(token_hash=token_hash)
+    session_id = session["id"]
+
+    # Active initially
+    assert get_session_by_token_hash(token_hash) is not None
+
+    # Revoke
+    revoke_session(session_id)
+
+    # Must be None now
+    assert get_session_by_token_hash(token_hash) is None
+
+
+def test_session_expiry_invalidates_access():
+    """Expired session must return None on lookup."""
+    raw_token = generate_session_token()
+    token_hash = hash_session_token(raw_token)
+    # Expire 1 day in the past
+    session = create_session(token_hash=token_hash, expires_days=-1)
+    assert get_session_by_token_hash(token_hash) is None

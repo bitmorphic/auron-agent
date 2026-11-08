@@ -126,3 +126,111 @@ class TestSHA256Utilities:
         empty_hash = hashlib.sha256(b"").hexdigest()
         assert sha256_bytes(b"") == empty_hash
 
+
+
+class TestArtifactIntegrityAndIdentity:
+    """Explicit tests for PRD §13/15 artifact digest verification and receipt identity."""
+
+    def test_artifact_tamper_detected_by_sha256(self, tmp_path):
+        """Modifying 1 byte of an artifact file changes its SHA-256 and detects tampering."""
+        artifact = tmp_path / "chart.png"
+        artifact.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 64)
+        original_hash = sha256_file(artifact)
+
+        # Tamper with 1 byte
+        artifact.write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x01" + b"\x00" * 63)
+        tampered_hash = sha256_file(artifact)
+
+        assert tampered_hash != original_hash, "Tampered artifact produced identical hash!"
+
+    def test_downloaded_artifact_bytes_match_recorded_sha256(self):
+        """Downloaded artifact payload bytes must match recorded receipt artifact SHA-256."""
+        # Simulated chart.png
+        chart_bytes = b"\x89PNG\r\n\x1a\nfake-chart-data"
+        chart_hash = hashlib.sha256(chart_bytes).hexdigest()
+
+        # Simulated metrics.json
+        metrics_bytes = b'{"total_revenue": 14400.0, "avg_price": 450.0}'
+        metrics_hash = hashlib.sha256(metrics_bytes).hexdigest()
+
+        receipt = {
+            "receipt_version": "1.0",
+            "task_id": "test-task-1",
+            "artifacts": [
+                {"name": "chart.png", "sha256": chart_hash, "size_bytes": len(chart_bytes)},
+                {"name": "metrics.json", "sha256": metrics_hash, "size_bytes": len(metrics_bytes)},
+            ],
+            "receipt_hash": None,
+        }
+        receipt["receipt_hash"] = compute_receipt_hash(receipt)
+
+        # Verification step
+        for art in receipt["artifacts"]:
+            payload = chart_bytes if art["name"] == "chart.png" else metrics_bytes
+            assert hashlib.sha256(payload).hexdigest() == art["sha256"]
+
+        # Tampered download must fail comparison
+        corrupted_download = chart_bytes + b"corruption"
+        assert hashlib.sha256(corrupted_download).hexdigest() != receipt["artifacts"][0]["sha256"]
+
+    def test_all_receipt_field_modifications_fail_verification(self):
+        """Modifying any field in a signed receipt fails verify_receipt_hash."""
+        base_receipt = {
+            "receipt_version": "1.0",
+            "task_id": "task-identity-42",
+            "attempt_id": "attempt-1",
+            "code": "print('clean')",
+            "execution": {"exit_code": 0, "status": "completed"},
+            "artifacts": [{"name": "chart.png", "sha256": "aabbcc"}],
+            "receipt_hash": None,
+        }
+        base_receipt["receipt_hash"] = compute_receipt_hash(base_receipt)
+        assert verify_receipt_hash(base_receipt) is True
+
+        # Mutation 1: code changed
+        r1 = json.loads(json.dumps(base_receipt))
+        r1["code"] = "import os; os.system('bad')"
+        assert verify_receipt_hash(r1) is False
+
+        # Mutation 2: exit_code changed
+        r2 = json.loads(json.dumps(base_receipt))
+        r2["execution"]["exit_code"] = 137
+        assert verify_receipt_hash(r2) is False
+
+        # Mutation 3: task_id changed
+        r3 = json.loads(json.dumps(base_receipt))
+        r3["task_id"] = "different-task"
+        assert verify_receipt_hash(r3) is False
+
+        # Mutation 4: artifact sha changed
+        r4 = json.loads(json.dumps(base_receipt))
+        r4["artifacts"][0]["sha256"] = "modifiedhash"
+        assert verify_receipt_hash(r4) is False
+
+    def test_task_attempt_receipt_identity_consistency(self):
+        """task.id, attempt.task_id and receipt.task_id must be strictly identical."""
+        task_id = "test-task-uuid-8899"
+        attempt = {"id": "att-1", "task_id": task_id}
+        receipt = {
+            "task_id": task_id,
+            "attempt_id": attempt["id"],
+            "execution": {"exit_code": 0},
+            "receipt_hash": None,
+        }
+        receipt["receipt_hash"] = compute_receipt_hash(receipt)
+
+        assert task_id == attempt["task_id"] == receipt["task_id"], "Task ID identity mismatch!"
+        assert attempt["id"] == receipt["attempt_id"]
+
+    def test_historical_records_preserve_original_hash(self):
+        """Receipt verification reads stored hash without overwriting or recomputing."""
+        historical_receipt = {
+            "receipt_version": "1.0",
+            "task_id": "hist-task",
+            "execution": {"exit_code": 0},
+            "receipt_hash": "original-unmodified-digest-value",
+        }
+        # Calling verify does not mutate or rewrite receipt_hash
+        valid = verify_receipt_hash(historical_receipt)
+        assert valid is False  # bogus hash
+        assert historical_receipt["receipt_hash"] == "original-unmodified-digest-value"

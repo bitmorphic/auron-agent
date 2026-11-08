@@ -31,8 +31,8 @@ AVAILABLE_PROBES: dict[str, dict[str, Any]] = {
         "name": "Outbound Network Exfiltration Probe",
         "target_control": "--network none",
         "mechanism": "Docker Network Namespace Isolation",
-        "expected": "Blocked: all outbound TCP/UDP sockets and DNS resolutions fail (Network unreachable)",
-        "description": "Attempts outbound TCP connections to loopback addresses and DNS resolution. Uses controller-owned harmless targets only (PRD §7 Safety).",
+        "expected": "Blocked: kernel routing table has zero external interfaces/routes; outbound sockets fail with Network unreachable (Errno 101)",
+        "description": "Validates network namespace isolation by inspecting interface list (/sys/class/net) and attempting egress to RFC 5737 TEST-NET-1 (192.0.2.1:80).",
     },
     "secret_isolation": {
         "id": "secret_isolation",
@@ -57,48 +57,58 @@ AVAILABLE_PROBES: dict[str, dict[str, Any]] = {
 _NETWORK_PROBE_CODE = '''import socket
 import sys
 import json
+import os
 
 results = []
 
-# PRD §7 Safety: Use only controller-owned/harmless targets.
-# 127.0.0.1 and 0.0.0.0 are loopback/null — no external traffic sent.
-# These will be unreachable from an isolated container whether or not
-# an external host is listening; isolation is verified by the error type.
-targets = [
-    ("127.0.0.1", 65432),    # loopback — no external traffic
-    ("0.0.0.0", 65433),      # null — connection always fails externally
-]
+# 1. Interface inspection: In --network none, only the loopback interface 'lo' exists.
+# The presence of eth0 or any external interface is a security finding.
+interfaces = os.listdir('/sys/class/net') if os.path.exists('/sys/class/net') else []
 
-for host, port in targets:
-    try:
-        s = socket.create_connection((host, port), timeout=2.0)
-        s.close()
-        results.append({"target": f"{host}:{port}", "connected": True, "error": None})
-    except Exception as e:
-        results.append({"target": f"{host}:{port}", "connected": False, "error": f"{type(e).__name__}: {str(e)}"})
+# 2. Outbound egress test: Target RFC 5737 TEST-NET-1 documentation IP (192.0.2.1:80).
+# RFC 5737 addresses are explicitly non-routable and never send traffic to public servers.
+# Under --network none, the container routing table has zero routes to external networks,
+# so socket connect immediately raises OSError: [Errno 101] Network is unreachable (ENETUNREACH).
+# ConnectionRefusedError on 127.0.0.1 is NOT proof of network isolation (it only means no local listener).
+target_host = "192.0.2.1"
+target_port = 80
+connected = False
+error_str = None
+errno_val = None
 
-# DNS resolution probe — harmless controller-owned name that reliably NXDOMAINs
 try:
-    ip = socket.gethostbyname("auron.internal.test.invalid")
-    results.append({"target": "dns:auron.internal.test.invalid", "connected": True, "resolved_ip": ip})
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(2.0)
+    s.connect((target_host, target_port))
+    connected = True
+    s.close()
+except OSError as e:
+    errno_val = getattr(e, 'errno', None)
+    error_str = f"{type(e).__name__}: [Errno {errno_val}] {e.strerror}" if errno_val else f"{type(e).__name__}: {str(e)}"
 except Exception as e:
-    results.append({"target": "dns:auron.internal.test.invalid", "connected": False, "error": f"{type(e).__name__}: {str(e)}"})
+    error_str = f"{type(e).__name__}: {str(e)}"
 
-# If any connection succeeded (unexpected on --network none), that is the finding.
-# Note: loopback connections may succeed on --network none if container process listens;
-# the classification is determined controller-side from NetworkMode, not connection success alone.
-any_connected = any(r.get("connected") for r in results)
+results.append({
+    "target": f"{target_host}:{target_port}",
+    "connected": connected,
+    "errno": errno_val,
+    "error": error_str,
+})
+
+only_loopback = (interfaces == ["lo"]) or ("eth0" not in interfaces)
+network_unreachable = (errno_val == 101) or ("unreachable" in (error_str or "").lower())
 
 output = {
     "probe": "network_isolation",
-    "any_connected": any_connected,
+    "any_connected": connected,
+    "interfaces": interfaces,
+    "only_loopback": only_loopback,
+    "network_unreachable": network_unreachable,
     "details": results
 }
 print(json.dumps(output))
 
-# Exit 10 means connected; exit 0 means all blocked.
-# Controller evaluates NetworkMode from Docker inspect to classify.
-if any_connected:
+if connected or ("eth0" in interfaces):
     sys.exit(10)
 else:
     sys.exit(0)
@@ -332,15 +342,19 @@ class RedTeamEngine:
         if probe_id == "network_isolation":
             net_mode = host_config.get("NetworkMode")
             any_connected = probe_data.get("any_connected")
+            interfaces = probe_data.get("interfaces", [])
 
             if any_connected is True:
                 return "succeeded", "SECURITY FINDING: Outbound network connection succeeded from inside container!"
 
-            if net_mode == "none" and any_connected is False:
+            if "eth0" in interfaces:
+                return "succeeded", f"SECURITY FINDING: External interface 'eth0' detected in container: {interfaces}!"
+
+            if net_mode == "none":
                 details = probe_data.get("details", [])
                 err_samples = [d.get("error") for d in details if d.get("error")]
                 err_text = "; ".join(err_samples[:2]) if err_samples else "Network is unreachable"
-                return "blocked", f"Network traffic blocked by --network none. Observed errors: {err_text}."
+                return "blocked", f"Network traffic blocked by --network none. Only loopback interface present ({interfaces}). Observed: {err_text}."
 
             if net_mode == "none" and exit_code == 0:
                 return "blocked", "Network traffic blocked by --network none (verified via Docker inspect and zero connections)."

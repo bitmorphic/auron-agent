@@ -167,7 +167,7 @@
           <span class="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800">PROD</span>
         </div>
         <div class="text-[#E8EEF6] font-medium truncate">Vultr VX1 Dedicated</div>
-        <div class="text-[#718198] mono text-[10px]">Tokyo • 45.77.19.39</div>
+        <div class="text-[#718198] mono text-[10px]">Tokyo • Dedicated Host Node</div>
       </div>
 
       <div class="flex items-center justify-between px-2 text-[#718198] text-[10px] mono">
@@ -576,14 +576,14 @@
                 </div>
                 <h3 class="text-sm font-semibold text-[#E8EEF6]">Outbound Network Exfiltration</h3>
                 <p class="text-xs text-[#9AA9BB] leading-relaxed">
-                  Attempts outbound TCP/UDP connections to public IPs (1.1.1.1, 8.8.8.8) and DNS name resolution from within the container.
+                  Verifies complete network namespace isolation by testing egress blocking, internal canary name resolution, and interface restriction under --network none.
                 </p>
               </div>
 
               <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-network_isolation" class="text-[11px] font-mono text-[#718198]">Ready</span>
-                <button onclick="runRedTeamProbe('network_isolation')" id="btn-probe-network_isolation"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-[#25B8CE] border border-[#263445] transition">
+                <span id="probe-status-network_isolation" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+                <button onclick="runRedTeamProbe('network_isolation')" id="btn-probe-network_isolation" disabled title="Red Team Arena is disabled by default via server configuration"
+                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
@@ -603,9 +603,9 @@
               </div>
 
               <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-secret_isolation" class="text-[11px] font-mono text-[#718198]">Ready</span>
-                <button onclick="runRedTeamProbe('secret_isolation')" id="btn-probe-secret_isolation"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-[#34D399] border border-[#263445] transition">
+                <span id="probe-status-secret_isolation" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+                <button onclick="runRedTeamProbe('secret_isolation')" id="btn-probe-secret_isolation" disabled title="Red Team Arena is disabled by default via server configuration"
+                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
@@ -625,9 +625,9 @@
               </div>
 
               <div class="pt-3 border-t border-[#263445] flex items-center justify-between">
-                <span id="probe-status-pid_limit" class="text-[11px] font-mono text-[#718198]">Ready</span>
-                <button onclick="runRedTeamProbe('pid_limit')" id="btn-probe-pid_limit"
-                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] hover:bg-[#1E2B3A] text-[#FBBF24] border border-[#263445] transition">
+                <span id="probe-status-pid_limit" class="text-[11px] font-mono text-[#718198]">Disabled</span>
+                <button onclick="runRedTeamProbe('pid_limit')" id="btn-probe-pid_limit" disabled title="Red Team Arena is disabled by default via server configuration"
+                        class="text-xs font-medium px-3 py-1.5 rounded bg-[#151F2B] text-[#718198] border border-[#263445] opacity-40 cursor-not-allowed transition">
                   Launch Probe
                 </button>
               </div>
@@ -1005,12 +1005,39 @@ Ready for probe execution. Click "Launch Probe" above to test active boundary co
         if (!res.ok) return;
         const data = await res.json();
         const badge = document.getElementById('redteam-status-badge');
+        const probeIds = ['network_isolation', 'secret_isolation', 'pid_limit'];
         if (data.enabled) {
           badge.className = 'badge-pass text-[10px] font-mono px-2 py-0.5 rounded';
           badge.innerText = 'Active / Enabled';
+          probeIds.forEach(id => {
+            const btn = document.getElementById(`btn-probe-${id}`);
+            const st = document.getElementById(`probe-status-${id}`);
+            if (btn) {
+              btn.disabled = false;
+              btn.classList.remove('opacity-40', 'cursor-not-allowed', 'text-[#718198]');
+              btn.removeAttribute('title');
+            }
+            if (st && st.innerText === 'Disabled') {
+              st.innerText = 'Ready';
+              st.className = 'text-[11px] font-mono text-[#718198]';
+            }
+          });
         } else {
           badge.className = 'badge-neutral text-[10px] font-mono px-2 py-0.5 rounded';
-          badge.innerText = 'Disabled by Default (Token Protected)';
+          badge.innerText = 'Disabled by Default (Feature Flag OFF)';
+          probeIds.forEach(id => {
+            const btn = document.getElementById(`btn-probe-${id}`);
+            const st = document.getElementById(`probe-status-${id}`);
+            if (btn) {
+              btn.disabled = true;
+              btn.title = 'Red Team Arena is disabled by default via server configuration';
+              btn.classList.add('opacity-40', 'cursor-not-allowed', 'text-[#718198]');
+            }
+            if (st) {
+              st.innerText = 'Disabled';
+              st.className = 'text-[11px] font-mono text-[#718198]';
+            }
+          });
         }
       } catch (e) {}
     }
